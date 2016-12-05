@@ -280,7 +280,7 @@ void UrHardwareInterface::doSwitch(
 		if (controller_it->type
 				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = true;
-			robot_->uploadProg();
+			robot_->uploadForceProg();
 			ROS_DEBUG("Starting position interface");
 		}
 	}

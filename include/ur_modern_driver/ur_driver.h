@@ -75,6 +75,7 @@ public:
 	void stopTraj();
 
 	bool uploadProg();
+	bool uploadForceProg();
 	bool openServo();
 	void closeServo(std::vector<double> positions);
 

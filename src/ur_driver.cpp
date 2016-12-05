@@ -124,7 +124,8 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 	}
 	unsigned int bytes_written;
 	int tmp;
-	unsigned char buf[28];
+	//unsigned char buf[28];
+	unsigned char buf[52];
 	for (int i = 0; i < 6; i++) {
 		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
 		buf[i * 4] = tmp & 0xff;
@@ -132,12 +133,23 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 		buf[i * 4 + 2] = (tmp >> 16) & 0xff;
 		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
 	}
+
 	tmp = htonl((int) keepalive);
 	buf[6 * 4] = tmp & 0xff;
 	buf[6 * 4 + 1] = (tmp >> 8) & 0xff;
 	buf[6 * 4 + 2] = (tmp >> 16) & 0xff;
 	buf[6 * 4 + 3] = (tmp >> 24) & 0xff;
-	bytes_written = write(new_sockfd_, buf, 28);
+
+	// FIXME: Replace positions[i] with forces[i].
+	for (int i = 7; i < 13; i++) {
+		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
+		buf[i * 4] = tmp & 0xff;
+		buf[i * 4 + 1] = (tmp >> 8) & 0xff;
+		buf[i * 4 + 2] = (tmp >> 16) & 0xff;
+		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
+	}
+	//bytes_written = write(new_sockfd_, buf, 28);
+	bytes_written = write(new_sockfd_, buf, 52);
 }
 
 void UrDriver::stopTraj() {
@@ -211,6 +223,92 @@ bool UrDriver::uploadProg() {
 	cmd_str += "params_mult[6] / MULT_jointstate]\n";
 	cmd_str += "\t\t\tkeepalive = params_mult[7]\n";
 	cmd_str += "\t\t\tset_servo_setpoint(q)\n";
+	cmd_str += "\t\tend\n";
+	cmd_str += "\tend\n";
+	cmd_str += "\tsleep(.1)\n";
+	cmd_str += "\tsocket_close()\n";
+	cmd_str += "\tkill thread_servo\n";
+	cmd_str += "end\n";
+
+	rt_interface_->addCommandToQueue(cmd_str);
+	return UrDriver::openServo();
+}
+
+bool UrDriver::uploadForceProg() {
+	std::string cmd_str;
+	char buf[128];
+	cmd_str = "def driverProg():\n";
+
+	sprintf(buf, "\tMULT_jointstate = %i\n", MULT_JOINTSTATE_);
+	cmd_str += buf;
+
+	cmd_str += "\tSERVO_IDLE = 0\n";
+	cmd_str += "\tSERVO_RUNNING = 1\n";
+	cmd_str += "\tcmd_servo_state = SERVO_IDLE\n";
+	cmd_str += "\tcmd_servo_q = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
+	cmd_str += "\tcmd_force_f = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
+	cmd_str += "\tdef set_servo_setpoint(q,f):\n";
+	cmd_str += "\t\tenter_critical\n";
+	cmd_str += "\t\tcmd_servo_state = SERVO_RUNNING\n";
+	cmd_str += "\t\tcmd_servo_q = q\n";
+	cmd_str += "\t\tcmd_force_f = f\n";
+	cmd_str += "\t\texit_critical\n";
+	cmd_str += "\tend\n";
+	cmd_str += "\tthread servoThread():\n";
+	cmd_str += "\t\tstate = SERVO_IDLE\n";
+	cmd_str += "\t\twhile True:\n";
+	cmd_str += "\t\t\tenter_critical\n";
+	cmd_str += "\t\t\tq = cmd_servo_q\n";
+	cmd_str += "\t\t\tf = cmd_force_f\n";
+	cmd_str += "\t\t\tdo_brake = False\n";
+	cmd_str += "\t\t\tif (state == SERVO_RUNNING) and ";
+	cmd_str += "(cmd_servo_state == SERVO_IDLE):\n";
+	cmd_str += "\t\t\t\tdo_brake = True\n";
+	cmd_str += "\t\t\tend\n";
+	cmd_str += "\t\t\tstate = cmd_servo_state\n";
+	cmd_str += "\t\t\tcmd_servo_state = SERVO_IDLE\n";
+	cmd_str += "\t\t\texit_critical\n";
+	cmd_str += "\t\t\tif do_brake:\n";
+	cmd_str += "\t\t\t\tstopj(1.0)\n";
+	cmd_str += "\t\t\t\tsync()\n";
+	cmd_str += "\t\t\telif state == SERVO_RUNNING:\n";
+
+	if (sec_interface_->robot_state_->getVersion() >= 3.1)
+		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
+				servoj_time_, servoj_lookahead_time_, servoj_gain_);
+	else
+		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f)\n", servoj_time_);
+	cmd_str += buf;
+
+	cmd_str += "\t\t\telse:\n";
+	cmd_str += "\t\t\t\tsync()\n";
+	cmd_str += "\t\t\tend\n";
+	cmd_str += "\t\tend\n";
+	cmd_str += "\tend\n";
+
+	sprintf(buf, "\tsocket_open(\"%s\", %i)\n", ip_addr_.c_str(),
+			REVERSE_PORT_);
+	cmd_str += buf;
+
+	cmd_str += "\tthread_servo = run servoThread()\n";
+	cmd_str += "\tkeepalive = 1\n";
+	cmd_str += "\twhile keepalive > 0:\n";
+	cmd_str += "\t\tparams_mult = socket_read_binary_integer(6+1+6)\n";
+	cmd_str += "\t\tif params_mult[0] > 0:\n";
+	cmd_str += "\t\t\tq = [params_mult[1] / MULT_jointstate, ";
+	cmd_str += "params_mult[2] / MULT_jointstate, ";
+	cmd_str += "params_mult[3] / MULT_jointstate, ";
+	cmd_str += "params_mult[4] / MULT_jointstate, ";
+	cmd_str += "params_mult[5] / MULT_jointstate, ";
+	cmd_str += "params_mult[6] / MULT_jointstate]\n";
+	cmd_str += "\t\t\tkeepalive = params_mult[7]\n";
+	cmd_str += "\t\t\tf = [params_mult[8] / MULT_jointstate, ";
+	cmd_str += "params_mult[9] / MULT_jointstate, ";
+	cmd_str += "params_mult[10] / MULT_jointstate, ";
+	cmd_str += "params_mult[11] / MULT_jointstate, ";
+	cmd_str += "params_mult[12] / MULT_jointstate, ";
+	cmd_str += "params_mult[13] / MULT_jointstate]\n";
+	cmd_str += "\t\t\tset_servo_setpoint(q,f)\n";
 	cmd_str += "\t\tend\n";
 	cmd_str += "\tend\n";
 	cmd_str += "\tsleep(.1)\n";
