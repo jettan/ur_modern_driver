@@ -116,6 +116,7 @@ bool UrDriver::doTraj(std::vector<double> inp_timestamps,
 }
 
 void UrDriver::servoj(std::vector<double> positions, int keepalive) {
+	int use_force_mode = 0;
 	if (!reverse_connected_) {
 		print_error(
 				"UrDriver::servoj called without a reverse connection present. Keepalive: "
@@ -125,7 +126,7 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 	unsigned int bytes_written;
 	int tmp;
 	//unsigned char buf[28];
-	unsigned char buf[52];
+	unsigned char buf[56];
 	for (int i = 0; i < 6; i++) {
 		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
 		buf[i * 4] = tmp & 0xff;
@@ -148,8 +149,15 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 		buf[i * 4 + 2] = (tmp >> 16) & 0xff;
 		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
 	}
+
+	// Flag to enable/disable force_mode.
+	tmp = htonl((int) use_force_mode);
+	buf[13 * 4] = tmp & 0xff;
+	buf[13 * 4 + 1] = (tmp >> 8) & 0xff;
+	buf[13 * 4 + 2] = (tmp >> 16) & 0xff;
+	buf[13 * 4 + 3] = (tmp >> 24) & 0xff;
 	//bytes_written = write(new_sockfd_, buf, 28);
-	bytes_written = write(new_sockfd_, buf, 52);
+	bytes_written = write(new_sockfd_, buf, 56);
 }
 
 void UrDriver::stopTraj() {
@@ -244,18 +252,27 @@ bool UrDriver::uploadForceProg() {
 
 	cmd_str += "\tSERVO_IDLE = 0\n";
 	cmd_str += "\tSERVO_RUNNING = 1\n";
+	cmd_str += "\tFORCE_IDLE = 0\n";
+	cmd_str += "\tFORCE_ACTIVE = 1\n";
 	cmd_str += "\tcmd_servo_state = SERVO_IDLE\n";
+	cmd_str += "\tcmd_force_state = FORCE_IDLE\n";
 	cmd_str += "\tcmd_servo_q = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
 	cmd_str += "\tcmd_force_f = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
-	cmd_str += "\tdef set_servo_setpoint(q,f):\n";
+	cmd_str += "\tdef set_servo_setpoint(q,f,a):\n";
 	cmd_str += "\t\tenter_critical\n";
 	cmd_str += "\t\tcmd_servo_state = SERVO_RUNNING\n";
 	cmd_str += "\t\tcmd_servo_q = q\n";
 	cmd_str += "\t\tcmd_force_f = f\n";
+	cmd_str += "\t\tif a > 0:\n";
+	cmd_str += "\t\t\tcmd_force_state = FORCE_ACTIVE\n";
+	cmd_str += "\t\telse:\n";
+	cmd_str += "\t\t\tcmd_force_state = FORCE_IDLE\n";
+	cmd_str += "\t\tend\n";
 	cmd_str += "\t\texit_critical\n";
 	cmd_str += "\tend\n";
 	cmd_str += "\tthread servoThread():\n";
 	cmd_str += "\t\tstate = SERVO_IDLE\n";
+	cmd_str += "\t\tf_state = FORCE_IDLE\n";
 	cmd_str += "\t\twhile True:\n";
 	cmd_str += "\t\t\tenter_critical\n";
 	cmd_str += "\t\t\tq = cmd_servo_q\n";
@@ -272,6 +289,8 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tstopj(1.0)\n";
 	cmd_str += "\t\t\t\tsync()\n";
 	cmd_str += "\t\t\telif state == SERVO_RUNNING:\n";
+
+	//TODO: Add force_mode command here in if/else statement on force_state.
 
 	if (sec_interface_->robot_state_->getVersion() >= 3.1)
 		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
@@ -293,7 +312,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tthread_servo = run servoThread()\n";
 	cmd_str += "\tkeepalive = 1\n";
 	cmd_str += "\twhile keepalive > 0:\n";
-	cmd_str += "\t\tparams_mult = socket_read_binary_integer(6+1+6)\n";
+	cmd_str += "\t\tparams_mult = socket_read_binary_integer(6+1+7)\n";
 	cmd_str += "\t\tif params_mult[0] > 0:\n";
 	cmd_str += "\t\t\tq = [params_mult[1] / MULT_jointstate, ";
 	cmd_str += "params_mult[2] / MULT_jointstate, ";
@@ -308,7 +327,8 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "params_mult[11] / MULT_jointstate, ";
 	cmd_str += "params_mult[12] / MULT_jointstate, ";
 	cmd_str += "params_mult[13] / MULT_jointstate]\n";
-	cmd_str += "\t\t\tset_servo_setpoint(q,f)\n";
+	cmd_str += "\t\t\ta = params_mult[14]\n";
+	cmd_str += "\t\t\tset_servo_setpoint(q,f,a)\n";
 	cmd_str += "\t\tend\n";
 	cmd_str += "\tend\n";
 	cmd_str += "\tsleep(.1)\n";
