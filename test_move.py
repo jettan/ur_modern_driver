@@ -10,10 +10,10 @@ from math import pi
 
 JOINT_NAMES = ['shoulder_pan_joint', 'shoulder_lift_joint', 'elbow_joint',
                'wrist_1_joint', 'wrist_2_joint', 'wrist_3_joint']
-Q1 = [2.2,0,-1.57,0,0,0]
-Q2 = [1.5,0,-1.57,0,0,0]
-Q3 = [1.5,-0.2,-1.57,0,0,0]
-    
+Q1 = [-0.57,-2,2,-1.57,-1.57,0]
+Q2 = [0,-2,2,-1.57,-1.57,0]
+Q3 = [0.57,-2,2,-1.57,-1.57,0]
+
 client = None
 
 def move1():
@@ -103,7 +103,7 @@ def move_interrupt():
     
         client.send_goal(g)
         time.sleep(3.0)
-        print "Interrupting"
+        print("Interrupting")
         joint_states = rospy.wait_for_message("joint_states", JointState)
         joints_pos = joint_states.position
         g.trajectory.points = [
@@ -123,21 +123,22 @@ def main():
     global client
     try:
         rospy.init_node("test_move", anonymous=True, disable_signals=True)
-        client = actionlib.SimpleActionClient('follow_joint_trajectory', FollowJointTrajectoryAction)
-        print "Waiting for server..."
+        client = actionlib.SimpleActionClient('/pos_based_pos_traj_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
+        #client = actionlib.SimpleActionClient('/follow_joint_trajectory', FollowJointTrajectoryAction)
+        print("Waiting for server...")
         client.wait_for_server()
-        print "Connected to server"
+        print("Connected to server")
         parameters = rospy.get_param(None)
         index = str(parameters).find('prefix')
         if (index > 0):
             prefix = str(parameters)[index+len("prefix': '"):(index+len("prefix': '")+str(parameters)[index+len("prefix': '"):-1].find("'"))]
             for i, name in enumerate(JOINT_NAMES):
                 JOINT_NAMES[i] = prefix + name
-        print "This program makes the robot move between the following three poses:"
-        print str([Q1[i]*180./pi for i in xrange(0,6)])
-        print str([Q2[i]*180./pi for i in xrange(0,6)])
-        print str([Q3[i]*180./pi for i in xrange(0,6)])
-        print "Please make sure that your robot can move freely between these poses before proceeding!"
+        print("This program makes the robot move between the following three poses:")
+        print(str([Q1[i]*180./pi for i in range(0,6)]))
+        print(str([Q2[i]*180./pi for i in range(0,6)]))
+        print(str([Q3[i]*180./pi for i in range(0,6)]))
+        print("Please make sure that your robot can move freely between these poses before proceeding!")
         inp = raw_input("Continue? y/n: ")[0]
         if (inp == 'y'):
             #move1()
@@ -145,9 +146,10 @@ def main():
             #move_disordered()
             #move_interrupt()
         else:
-            print "Halting program"
+            print("Halting program")
     except KeyboardInterrupt:
         rospy.signal_shutdown("KeyboardInterrupt")
         raise
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    main()
