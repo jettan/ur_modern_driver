@@ -99,6 +99,9 @@ public:
 	bool canSwitch(
 			const std::list<hardware_interface::ControllerInfo> &start_list,
 			const std::list<hardware_interface::ControllerInfo> &stop_list) const;
+	bool prepareSwitch(
+			const std::list<hardware_interface::ControllerInfo> &start_list,
+			const std::list<hardware_interface::ControllerInfo> &stop_list) const;
 	void doSwitch(const std::list<hardware_interface::ControllerInfo>&start_list,
 			const std::list<hardware_interface::ControllerInfo>&stop_list);
 

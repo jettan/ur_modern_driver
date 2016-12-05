@@ -174,12 +174,19 @@ void UrHardwareInterface::write() {
 bool UrHardwareInterface::canSwitch(
 		const std::list<hardware_interface::ControllerInfo> &start_list,
 		const std::list<hardware_interface::ControllerInfo> &stop_list) const {
+	ROS_WARN_STREAM("canSwitch() function is deprecated in kinetic!");
+	return prepareSwitch(start_list, stop_list);
+}
+
+bool UrHardwareInterface::prepareSwitch(
+		const std::list<hardware_interface::ControllerInfo> &start_list,
+		const std::list<hardware_interface::ControllerInfo> &stop_list) const {
 	for (std::list<hardware_interface::ControllerInfo>::const_iterator controller_it =
 			start_list.begin(); controller_it != start_list.end();
 			++controller_it) {
         
 		if (controller_it->type
-				== "hardware_interface::VelocityJointInterface") {
+				== "velocity_controllers/JointTrajectoryController") {
 			if (velocity_interface_running_) {
 				ROS_ERROR(
 						"%s: An interface of that type (%s) is already running",
@@ -194,7 +201,7 @@ bool UrHardwareInterface::canSwitch(
 						stop_controller_it != stop_list.end();
 						++stop_controller_it) {
 					if (stop_controller_it->type
-							== "hardware_interface::PositionJointInterface") {
+							== "position_controllers/JointTrajectoryController") {
 						error = false;
 						break;
 					}
@@ -208,7 +215,7 @@ bool UrHardwareInterface::canSwitch(
 				}
 			}
 		} else if (controller_it->type
-				== "hardware_interface::PositionJointInterface") {
+				== "position_controllers/JointTrajectoryController") {
 			if (position_interface_running_) {
 				ROS_ERROR(
 						"%s: An interface of that type (%s) is already running",
@@ -223,7 +230,7 @@ bool UrHardwareInterface::canSwitch(
 						stop_controller_it != stop_list.end();
 						++stop_controller_it) {
 					if (stop_controller_it->type
-							== "hardware_interface::VelocityJointInterface") {
+							== "velocity_controllers/JointTrajectoryController") {
 						error = false;
 						break;
 					}
@@ -250,12 +257,12 @@ void UrHardwareInterface::doSwitch(
 			stop_list.begin(); controller_it != stop_list.end();
 			++controller_it) {
 		if (controller_it->type
-				== "hardware_interface::VelocityJointInterface") {
+				== "velocity_controllers/JointTrajectoryController") {
 			velocity_interface_running_ = false;
 			ROS_DEBUG("Stopping velocity interface");
 		}
 		if (controller_it->type
-				== "hardware_interface::PositionJointInterface") {
+				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = false;
 			std::vector<double> tmp;
 			robot_->closeServo(tmp);
@@ -266,12 +273,12 @@ void UrHardwareInterface::doSwitch(
 			start_list.begin(); controller_it != start_list.end();
 			++controller_it) {
 		if (controller_it->type
-				== "hardware_interface::VelocityJointInterface") {
+				== "velocity_controllers/JointTrajectoryController") {
 			velocity_interface_running_ = true;
 			ROS_DEBUG("Starting velocity interface");
 		}
 		if (controller_it->type
-				== "hardware_interface::PositionJointInterface") {
+				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = true;
 			robot_->uploadProg();
 			ROS_DEBUG("Starting position interface");
