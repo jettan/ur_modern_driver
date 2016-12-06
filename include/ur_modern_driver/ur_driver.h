@@ -70,14 +70,21 @@ public:
 	bool doTraj(std::vector<double> inp_timestamps,
 			std::vector<std::vector<double> > inp_positions,
 			std::vector<std::vector<double> > inp_velocities);
+
 	void servoj(std::vector<double> positions, int keepalive = 1);
+
+	/// Essentially the same as forcej, but with more parameters to pass as arguments for the force_mode command.
+	void forcej(std::vector<double> positions, int keepalive = 1);
 
 	void stopTraj();
 
 	bool uploadProg();
+
+	/// Upload a modified driver program to the controller to support the force_mode command.
 	bool uploadForceProg();
+
 	bool openServo();
-	void closeServo(std::vector<double> positions);
+	void closeServo(std::vector<double> positions, bool use_force_mode = false);
 
 	std::vector<double> interp_cubic(double t, double T,
 			std::vector<double> p0_pos, std::vector<double> p1_pos,

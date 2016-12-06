@@ -576,7 +576,6 @@ private:
 		realtime_tools::RealtimePublisher<geometry_msgs::TwistStamped> tool_vel_pub( nh_, "tool_velocity", 1 );
 		tool_vel_pub.msg_.header.frame_id = base_frame_;
 
-
 		clock_gettime(CLOCK_MONOTONIC, &last_time);
 		while (ros::ok()) {
 			std::mutex msg_lock; // The values are locked for reading in the class, so just use a dummy mutex

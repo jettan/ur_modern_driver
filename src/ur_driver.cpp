@@ -116,7 +116,6 @@ bool UrDriver::doTraj(std::vector<double> inp_timestamps,
 }
 
 void UrDriver::servoj(std::vector<double> positions, int keepalive) {
-	int use_force_mode = 0;
 	if (!reverse_connected_) {
 		print_error(
 				"UrDriver::servoj called without a reverse connection present. Keepalive: "
@@ -125,7 +124,35 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 	}
 	unsigned int bytes_written;
 	int tmp;
-	//unsigned char buf[28];
+	unsigned char buf[28];
+	for (int i = 0; i < 6; i++) {
+		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
+		buf[i * 4] = tmp & 0xff;
+		buf[i * 4 + 1] = (tmp >> 8) & 0xff;
+		buf[i * 4 + 2] = (tmp >> 16) & 0xff;
+		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
+	}
+
+	tmp = htonl((int) keepalive);
+	buf[6 * 4] = tmp & 0xff;
+	buf[6 * 4 + 1] = (tmp >> 8) & 0xff;
+	buf[6 * 4 + 2] = (tmp >> 16) & 0xff;
+	buf[6 * 4 + 3] = (tmp >> 24) & 0xff;
+
+	bytes_written = write(new_sockfd_, buf, 28);
+}
+
+// FIXME: Correct implementation.
+void UrDriver::forcej(std::vector<double> positions, int keepalive) {
+	int use_force_mode = 0;
+	if (!reverse_connected_) {
+		print_error(
+				"UrDriver::forcej called without a reverse connection present. Keepalive: "
+						+ std::to_string(keepalive));
+		return;
+	}
+	unsigned int bytes_written;
+	int tmp;
 	unsigned char buf[56];
 	for (int i = 0; i < 6; i++) {
 		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
@@ -156,7 +183,7 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 	buf[13 * 4 + 1] = (tmp >> 8) & 0xff;
 	buf[13 * 4 + 2] = (tmp >> 16) & 0xff;
 	buf[13 * 4 + 3] = (tmp >> 24) & 0xff;
-	//bytes_written = write(new_sockfd_, buf, 28);
+
 	bytes_written = write(new_sockfd_, buf, 56);
 }
 
@@ -245,7 +272,7 @@ bool UrDriver::uploadProg() {
 bool UrDriver::uploadForceProg() {
 	std::string cmd_str;
 	char buf[128];
-	cmd_str = "def driverProg():\n";
+	cmd_str = "def forceProg():\n";
 
 	sprintf(buf, "\tMULT_jointstate = %i\n", MULT_JOINTSTATE_);
 	cmd_str += buf;
@@ -353,12 +380,15 @@ bool UrDriver::openServo() {
 	reverse_connected_ = true;
 	return true;
 }
-void UrDriver::closeServo(std::vector<double> positions) {
-	if (positions.size() != 6)
-		UrDriver::servoj(rt_interface_->robot_state_->getQActual(), 0);
-	else
-		UrDriver::servoj(positions, 0);
-
+void UrDriver::closeServo(std::vector<double> positions, bool use_force_mode) {
+	if (use_force_mode) {
+		UrDriver::forcej(rt_interface_->robot_state_->getQActual(), 0);
+	} else {
+		if (positions.size() != 6)
+			UrDriver::servoj(rt_interface_->robot_state_->getQActual(), 0);
+		else
+			UrDriver::servoj(positions, 0);
+	}
 	reverse_connected_ = false;
 	close(new_sockfd_);
 }

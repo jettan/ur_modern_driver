@@ -115,8 +115,12 @@ protected:
 	hardware_interface::ForceTorqueSensorInterface force_torque_interface_;
 	hardware_interface::PositionJointInterface position_joint_interface_;
 	hardware_interface::VelocityJointInterface velocity_joint_interface_;
+	hardware_interface::EffortJointInterface force_joint_interface_;
+
 	bool velocity_interface_running_;
 	bool position_interface_running_;
+	bool force_interface_running_;
+
 	// Shared memory
 	std::vector<std::string> joint_names_;
 	std::vector<double> joint_position_;
@@ -124,6 +128,7 @@ protected:
 	std::vector<double> joint_effort_;
 	std::vector<double> joint_position_command_;
 	std::vector<double> joint_velocity_command_;
+	std::vector<double> joint_force_command_;
 	std::vector<double> prev_joint_velocity_command_;
 		std::size_t num_joints_;
 	double robot_force_[3] = { 0., 0., 0. };
