@@ -49,7 +49,7 @@ pos_based_pos_traj_controller:
    # state_publish_rate:  50 # Defaults to 50
    # action_monitor_rate: 20 # Defaults to 20
    #hold_trajectory_duration: 0 # Defaults to 0.5
-   
+
 # Joint Trajectory Controller - velocity based -------------------------------
 # For detailed explanations of parameter see http://wiki.ros.org/joint_trajectory_controller
 vel_based_pos_traj_controller:
@@ -85,4 +85,33 @@ vel_based_pos_traj_controller:
    # state_publish_rate:  50 # Defaults to 50
    # action_monitor_rate: 20 # Defaults to 20
    #hold_trajectory_duration: 0 # Defaults to 0.5
+
+# Joint Trajectory Controller - force based -------------------------------
+# For detailed explanations of parameter see http://wiki.ros.org/joint_trajectory_controller
+force_based_pos_traj_controller:
+   type: effort_controllers/JointTrajectoryController
+  #!! Even though we specify the joint names here, force_mode for UR robots doesn't involve setting force/torques to the individual joints.
+   joints:
+     - shoulder_pan_joint
+     - shoulder_lift_joint
+     - elbow_joint
+     - wrist_1_joint
+     - wrist_2_joint
+     - wrist_3_joint
+
+   # Values for constraints and gains are going to be completely ignored since the UR5 doesn't have per joint force/torque control.
+   #!! Copied from velocity controller section.
+   gains:
+      shoulder_pan_joint: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+      shoulder_lift_joint: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+      elbow_joint: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+      wrist_1_joint: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+      wrist_2_joint: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+      wrist_3_joint: {p: 1.2,  i: 0.0, d: 0.1, i_clamp: 1}
+
+   state_publish_rate:  125
+
+   # Ignored.
+   action_monitor_rate:      10
+   stop_trajectory_duration: 0.5
 
