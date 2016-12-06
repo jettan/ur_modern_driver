@@ -1,5 +1,7 @@
 # ur_modern_driver
 
+## DISCLAIMER: The force_based_pos_trajectory controller in this branch is in development phase. USE AT OWN RISK OR DO NOT USE AT ALL!
+
 A new driver for the UR3/UR5/UR10 robot arms from Universal Robots. It is designed to replace the old driver transparently, while solving some issues, improving usability as well as enabling compatibility  of ros_control. 
 
 ## Improvements
