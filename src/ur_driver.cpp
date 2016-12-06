@@ -153,7 +153,11 @@ void UrDriver::forcej(std::vector<double> positions, int keepalive) {
 	}
 	unsigned int bytes_written;
 	int tmp;
-	unsigned char buf[56];
+
+	// (6 + 1 + 1 + 6 + 6) * 4 = 80
+	unsigned char buf[80];
+
+	// Position vector (offset with small delta when using force_mode).
 	for (int i = 0; i < 6; i++) {
 		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
 		buf[i * 4] = tmp & 0xff;
@@ -162,14 +166,33 @@ void UrDriver::forcej(std::vector<double> positions, int keepalive) {
 		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
 	}
 
+	// Keepalive flag.
 	tmp = htonl((int) keepalive);
 	buf[6 * 4] = tmp & 0xff;
 	buf[6 * 4 + 1] = (tmp >> 8) & 0xff;
 	buf[6 * 4 + 2] = (tmp >> 16) & 0xff;
 	buf[6 * 4 + 3] = (tmp >> 24) & 0xff;
 
-	// FIXME: Replace positions[i] with forces[i].
-	for (int i = 7; i < 13; i++) {
+	// Flag for force_mode.
+	tmp = htonl((int) use_force_mode);
+	buf[7 * 4] = tmp & 0xff;
+	buf[7 * 4 + 1] = (tmp >> 8) & 0xff;
+	buf[7 * 4 + 2] = (tmp >> 16) & 0xff;
+	buf[7 * 4 + 3] = (tmp >> 24) & 0xff;
+
+	// FIXME: Add the compliance vector as function argument and replace positions[i] here.
+	// Compliance vector.
+	for (int i = 8; i < 14; i++) {
+		tmp = htonl((int) (positions[i]));
+		buf[i * 4] = tmp & 0xff;
+		buf[i * 4 + 1] = (tmp >> 8) & 0xff;
+		buf[i * 4 + 2] = (tmp >> 16) & 0xff;
+		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
+	}
+
+	// FIXME: Add the force vector as function argument and replace positions[i] here.
+	// Force vector.
+	for (int i = 14; i < 20; i++) {
 		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
 		buf[i * 4] = tmp & 0xff;
 		buf[i * 4 + 1] = (tmp >> 8) & 0xff;
@@ -177,14 +200,7 @@ void UrDriver::forcej(std::vector<double> positions, int keepalive) {
 		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
 	}
 
-	// Flag to enable/disable force_mode.
-	tmp = htonl((int) use_force_mode);
-	buf[13 * 4] = tmp & 0xff;
-	buf[13 * 4 + 1] = (tmp >> 8) & 0xff;
-	buf[13 * 4 + 2] = (tmp >> 16) & 0xff;
-	buf[13 * 4 + 3] = (tmp >> 24) & 0xff;
-
-	bytes_written = write(new_sockfd_, buf, 56);
+	bytes_written = write(new_sockfd_, buf, 80);
 }
 
 void UrDriver::stopTraj() {
@@ -281,14 +297,22 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tSERVO_RUNNING = 1\n";
 	cmd_str += "\tFORCE_IDLE = 0\n";
 	cmd_str += "\tFORCE_ACTIVE = 1\n";
+
+	// Check whether sending this array with floats really work...
+	cmd_str += "\tFORCE_LIMITS = [0.1, 0.1, 0.15, 0.349, 0.349, 0.349]\n";
 	cmd_str += "\tcmd_servo_state = SERVO_IDLE\n";
 	cmd_str += "\tcmd_force_state = FORCE_IDLE\n";
 	cmd_str += "\tcmd_servo_q = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
+
+	// Compliance vector and force vector for force_mode command.
+	cmd_str += "\tcmd_force_c = [0, 0, 0, 0, 0, 0]\n";
 	cmd_str += "\tcmd_force_f = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
-	cmd_str += "\tdef set_servo_setpoint(q,f,a):\n";
+
+	cmd_str += "\tdef set_servo_setpoint(q,c,f,a):\n";
 	cmd_str += "\t\tenter_critical\n";
 	cmd_str += "\t\tcmd_servo_state = SERVO_RUNNING\n";
 	cmd_str += "\t\tcmd_servo_q = q\n";
+	//cmd_str += "\t\tcmd_force_c = c\n";
 	cmd_str += "\t\tcmd_force_f = f\n";
 	cmd_str += "\t\tif a > 0:\n";
 	cmd_str += "\t\t\tcmd_force_state = FORCE_ACTIVE\n";
@@ -303,6 +327,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\twhile True:\n";
 	cmd_str += "\t\t\tenter_critical\n";
 	cmd_str += "\t\t\tq = cmd_servo_q\n";
+	cmd_str += "\t\t\tc = cmd_force_c\n";
 	cmd_str += "\t\t\tf = cmd_force_f\n";
 	cmd_str += "\t\t\tdo_brake = False\n";
 	cmd_str += "\t\t\tif (state == SERVO_RUNNING) and ";
@@ -317,7 +342,13 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tsync()\n";
 	cmd_str += "\t\t\telif state == SERVO_RUNNING:\n";
 
-	//TODO: Add force_mode command here in if/else statement on force_state.
+	// Decide whether we need to prepend the force_mode command before servoj.
+	// ASSUMPTION: The controller can handle subsequent force_mode() calls without end_force_mode() first.
+	cmd_str += "\t\t\t\tforce_state = cmd_force_state\n";
+	cmd_str += "\t\t\t\tif force_state == FORCE_ACTIVE:\n";
+	sprintf(buf, "\t\t\t\t\tforce_mode(tool_pose(), c, f, 2, FORCE_LIMITS)\n");
+	cmd_str += buf;
+	cmd_str += "\t\t\t\tend\n";
 
 	if (sec_interface_->robot_state_->getVersion() >= 3.1)
 		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
@@ -339,7 +370,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tthread_servo = run servoThread()\n";
 	cmd_str += "\tkeepalive = 1\n";
 	cmd_str += "\twhile keepalive > 0:\n";
-	cmd_str += "\t\tparams_mult = socket_read_binary_integer(6+1+7)\n";
+	cmd_str += "\t\tparams_mult = socket_read_binary_integer(6+1+1+6+6)\n";
 	cmd_str += "\t\tif params_mult[0] > 0:\n";
 	cmd_str += "\t\t\tq = [params_mult[1] / MULT_jointstate, ";
 	cmd_str += "params_mult[2] / MULT_jointstate, ";
@@ -348,14 +379,20 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "params_mult[5] / MULT_jointstate, ";
 	cmd_str += "params_mult[6] / MULT_jointstate]\n";
 	cmd_str += "\t\t\tkeepalive = params_mult[7]\n";
-	cmd_str += "\t\t\tf = [params_mult[8] / MULT_jointstate, ";
-	cmd_str += "params_mult[9] / MULT_jointstate, ";
-	cmd_str += "params_mult[10] / MULT_jointstate, ";
-	cmd_str += "params_mult[11] / MULT_jointstate, ";
-	cmd_str += "params_mult[12] / MULT_jointstate, ";
-	cmd_str += "params_mult[13] / MULT_jointstate]\n";
-	cmd_str += "\t\t\ta = params_mult[14]\n";
-	cmd_str += "\t\t\tset_servo_setpoint(q,f,a)\n";
+	cmd_str += "\t\t\ta = params_mult[8]\n";
+	cmd_str += "\t\t\tc = [params_mult[9], ";
+	cmd_str += "params_mult[10], ";
+	cmd_str += "params_mult[11], ";
+	cmd_str += "params_mult[12], ";
+	cmd_str += "params_mult[13], ";
+	cmd_str += "params_mult[14]]\n";
+	cmd_str += "\t\t\tf = [params_mult[15] / MULT_jointstate, ";
+	cmd_str += "params_mult[16] / MULT_jointstate, ";
+	cmd_str += "params_mult[17] / MULT_jointstate, ";
+	cmd_str += "params_mult[18] / MULT_jointstate, ";
+	cmd_str += "params_mult[19] / MULT_jointstate, ";
+	cmd_str += "params_mult[20] / MULT_jointstate]\n";
+	cmd_str += "\t\t\tset_servo_setpoint(q,c,f,a)\n";
 	cmd_str += "\t\tend\n";
 	cmd_str += "\tend\n";
 	cmd_str += "\tsleep(.1)\n";
