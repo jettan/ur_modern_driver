@@ -113,7 +113,20 @@ void UrHardwareInterface::init() {
 						joint_state_interface_.getHandle(joint_names_[i]),
 						&joint_velocity_command_[i]));
 		prev_joint_velocity_command_[i] = 0.;
+
+		// Register regular joint handles for the force mode interface.
+		//force_mode_position_interface_.registerHandle(
+		//		hardware_interface::JointHandle(
+		//				joint_state_interface_.getHandle(joint_names_[i]),
+		//				&joint_position_command_[i]));
 	}
+
+	// Also register handles for force_mode parameters.
+	//for (std::size_t i = 0; i < force_mode_forces_.size(); ++i) {
+		//force_mode_position_interface_.registerHandle(
+		//		ForceModeHandle(&force_mode_compliance_[i],
+		//				&force_mode_forces_[i]));
+	//}
 
 	// Create force torque interface
 	force_torque_interface_.registerHandle(
@@ -126,6 +139,7 @@ void UrHardwareInterface::init() {
 	registerInterface(&force_torque_interface_);   // From RobotHW base class.
 	velocity_interface_running_ = false;
 	position_interface_running_ = false;
+	//force_mode_position_interface_running_ = false;
 }
 
 void UrHardwareInterface::read() {
@@ -170,6 +184,9 @@ void UrHardwareInterface::write() {
 		//robot_->servoj(joint_position_command_);
 		robot_->forcej(joint_position_command_, force_mode_compliance_, force_mode_forces_, use_force_mode_, 1);
 	}
+	//else if (force_mode_position_interface_running_) {
+	//	robot_->forcej(joint_position_command_, force_mode_compliance_, force_mode_forces_, use_force_mode_, 1);
+	//}
 }
 bool UrHardwareInterface::canSwitch(
 		const std::list<hardware_interface::ControllerInfo> &start_list,
@@ -178,6 +195,7 @@ bool UrHardwareInterface::canSwitch(
 	return prepareSwitch(start_list, stop_list);
 }
 
+// TODO: Add case for force_mode_position_interface
 bool UrHardwareInterface::prepareSwitch(
 		const std::list<hardware_interface::ControllerInfo> &start_list,
 		const std::list<hardware_interface::ControllerInfo> &stop_list) const {
@@ -249,6 +267,7 @@ bool UrHardwareInterface::prepareSwitch(
 	return true;
 }
 
+// TODO: Add case for force_mode_position_interface
 void UrHardwareInterface::doSwitch(
 		const std::list<hardware_interface::ControllerInfo>& start_list,
 		const std::list<hardware_interface::ControllerInfo>& stop_list) {
