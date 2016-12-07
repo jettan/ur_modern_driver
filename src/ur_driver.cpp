@@ -142,9 +142,10 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 	bytes_written = write(new_sockfd_, buf, 28);
 }
 
-// FIXME: Correct implementation.
-void UrDriver::forcej(std::vector<double> positions, int keepalive) {
-	int use_force_mode = 0;
+void UrDriver::forcej(std::vector<double> positions,
+		std::vector<int> compliance,
+		std::vector<double> forces,
+		int use_force_mode, int keepalive) {
 	if (!reverse_connected_) {
 		print_error(
 				"UrDriver::forcej called without a reverse connection present. Keepalive: "
@@ -153,6 +154,15 @@ void UrDriver::forcej(std::vector<double> positions, int keepalive) {
 	}
 	unsigned int bytes_written;
 	int tmp;
+
+	// Sanity check for vectors' length.
+	if (positions.size() != 6 || compliance.size() != 6 || forces.size() != 6) {
+		print_error("forcej called with incorrect vector lengths!"
+			+ std::to_string(positions.size())
+			+ ", " + std::to_string(compliance.size())
+			+ ", " + std::to_string(forces.size()));
+		return;
+	}
 
 	// (6 + 1 + 1 + 6 + 6) * 4 = 80
 	unsigned char buf[80];
@@ -180,7 +190,6 @@ void UrDriver::forcej(std::vector<double> positions, int keepalive) {
 	buf[7 * 4 + 2] = (tmp >> 16) & 0xff;
 	buf[7 * 4 + 3] = (tmp >> 24) & 0xff;
 
-	// FIXME: Add the compliance vector as function argument and replace positions[i] here.
 	// Compliance vector.
 	for (int i = 8; i < 14; i++) {
 		tmp = htonl((int) (positions[i]));
@@ -190,7 +199,6 @@ void UrDriver::forcej(std::vector<double> positions, int keepalive) {
 		buf[i * 4 + 3] = (tmp >> 24) & 0xff;
 	}
 
-	// FIXME: Add the force vector as function argument and replace positions[i] here.
 	// Force vector.
 	for (int i = 14; i < 20; i++) {
 		tmp = htonl((int) (positions[i] * MULT_JOINTSTATE_));
@@ -297,8 +305,6 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tSERVO_RUNNING = 1\n";
 	cmd_str += "\tFORCE_IDLE = 0\n";
 	cmd_str += "\tFORCE_ACTIVE = 1\n";
-
-	// Check whether sending this array with floats really work...
 	cmd_str += "\tFORCE_LIMITS = [0.1, 0.1, 0.15, 0.349, 0.349, 0.349]\n";
 	cmd_str += "\tcmd_servo_state = SERVO_IDLE\n";
 	cmd_str += "\tcmd_force_state = FORCE_IDLE\n";
@@ -312,7 +318,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\tenter_critical\n";
 	cmd_str += "\t\tcmd_servo_state = SERVO_RUNNING\n";
 	cmd_str += "\t\tcmd_servo_q = q\n";
-	//cmd_str += "\t\tcmd_force_c = c\n";
+	cmd_str += "\t\tcmd_force_c = c\n";
 	cmd_str += "\t\tcmd_force_f = f\n";
 	cmd_str += "\t\tif a > 0:\n";
 	cmd_str += "\t\t\tcmd_force_state = FORCE_ACTIVE\n";
@@ -342,8 +348,6 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tsync()\n";
 	cmd_str += "\t\t\telif state == SERVO_RUNNING:\n";
 
-	// Decide whether we need to prepend the force_mode command before servoj.
-	// ASSUMPTION: The controller can handle subsequent force_mode() calls without end_force_mode() first.
 	cmd_str += "\t\t\t\tforce_state = cmd_force_state\n";
 	cmd_str += "\t\t\t\tif force_state == FORCE_ACTIVE:\n";
 	sprintf(buf, "\t\t\t\t\tforce_mode(tool_pose(), c, f, 2, FORCE_LIMITS)\n");
@@ -419,7 +423,9 @@ bool UrDriver::openServo() {
 }
 void UrDriver::closeServo(std::vector<double> positions, bool use_force_mode) {
 	if (use_force_mode) {
-		UrDriver::forcej(rt_interface_->robot_state_->getQActual(), 0);
+		std::vector<int> compliance = {0,0,0,0,0,0};
+		std::vector<double> forces  = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+		UrDriver::forcej(rt_interface_->robot_state_->getQActual(), compliance, forces, 0, 0);
 	} else {
 		if (positions.size() != 6)
 			UrDriver::servoj(rt_interface_->robot_state_->getQActual(), 0);

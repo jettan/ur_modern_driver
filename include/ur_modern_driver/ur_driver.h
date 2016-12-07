@@ -74,7 +74,10 @@ public:
 	void servoj(std::vector<double> positions, int keepalive = 1);
 
 	/// Essentially the same as forcej, but with more parameters to pass as arguments for the force_mode command.
-	void forcej(std::vector<double> positions, int keepalive = 1);
+	void forcej(std::vector<double> positions,
+			std::vector<int> compliance,
+			std::vector<double> forces,
+			int use_force_mode = 0, int keepalive = 1);
 
 	void stopTraj();
 

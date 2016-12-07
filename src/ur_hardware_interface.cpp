@@ -136,6 +136,7 @@ void UrHardwareInterface::init() {
 	registerInterface(&force_torque_interface_);   // From RobotHW base class.
 	velocity_interface_running_ = false;
 	position_interface_running_ = false;
+	force_interface_running_    = false;
 }
 
 void UrHardwareInterface::read() {
@@ -161,6 +162,9 @@ void UrHardwareInterface::setMaxVelChange(double inp) {
 }
 
 void UrHardwareInterface::write() {
+	std::vector<int> compliance = {0,0,0,0,0,0};
+	std::vector<double> forces  = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
 	if (velocity_interface_running_) {
 		std::vector<double> cmd;
 		//do some rate limiting
@@ -179,7 +183,7 @@ void UrHardwareInterface::write() {
 	} else if (position_interface_running_) {
 		robot_->servoj(joint_position_command_);
 	} else if (force_interface_running_) {
-		robot_->forcej(joint_force_command_);
+		robot_->forcej(joint_force_command_, compliance, forces);
 	}
 }
 bool UrHardwareInterface::canSwitch(
