@@ -123,7 +123,7 @@ def main():
     global client
     try:
         rospy.init_node("test_move", anonymous=True, disable_signals=True)
-        client = actionlib.SimpleActionClient('/force_based_pos_traj_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
+        client = actionlib.SimpleActionClient('/pos_based_pos_traj_controller/follow_joint_trajectory', FollowJointTrajectoryAction)
         #client = actionlib.SimpleActionClient('/follow_joint_trajectory', FollowJointTrajectoryAction)
         print("Waiting for server...")
         client.wait_for_server()

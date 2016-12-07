@@ -88,9 +88,6 @@ void UrHardwareInterface::init() {
 	joint_effort_.resize(num_joints_);
 	joint_position_command_.resize(num_joints_);
 	joint_velocity_command_.resize(num_joints_);
-
-	// FIXME: Should not use num_joints_ but something like force_command_size_.
-	joint_force_command_.resize(num_joints_);
 	prev_joint_velocity_command_.resize(num_joints_);
 
 	// Initialize controller
@@ -116,12 +113,6 @@ void UrHardwareInterface::init() {
 						joint_state_interface_.getHandle(joint_names_[i]),
 						&joint_velocity_command_[i]));
 		prev_joint_velocity_command_[i] = 0.;
-
-		// Create force joint interface
-		force_joint_interface_.registerHandle(
-				hardware_interface::JointHandle(
-						joint_state_interface_.getHandle(joint_names_[i]),
-						&joint_force_command_[i]));
 	}
 
 	// Create force torque interface
@@ -132,11 +123,9 @@ void UrHardwareInterface::init() {
 	registerInterface(&joint_state_interface_);    // From RobotHW base class.
 	registerInterface(&position_joint_interface_); // From RobotHW base class.
 	registerInterface(&velocity_joint_interface_); // From RobotHW base class.
-	registerInterface(&force_joint_interface_);    // From RobotHW base class.
 	registerInterface(&force_torque_interface_);   // From RobotHW base class.
 	velocity_interface_running_ = false;
 	position_interface_running_ = false;
-	force_interface_running_    = false;
 }
 
 void UrHardwareInterface::read() {
@@ -162,9 +151,6 @@ void UrHardwareInterface::setMaxVelChange(double inp) {
 }
 
 void UrHardwareInterface::write() {
-	std::vector<int> compliance = {0,0,0,0,0,0};
-	std::vector<double> forces  = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-
 	if (velocity_interface_running_) {
 		std::vector<double> cmd;
 		//do some rate limiting
@@ -181,9 +167,8 @@ void UrHardwareInterface::write() {
 		}
 		robot_->setSpeed(cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5],  max_vel_change_*125);
 	} else if (position_interface_running_) {
-		robot_->servoj(joint_position_command_);
-	} else if (force_interface_running_) {
-		robot_->forcej(joint_force_command_, compliance, forces);
+		//robot_->servoj(joint_position_command_);
+		robot_->forcej(joint_position_command_, force_mode_compliance_, force_mode_forces_, use_force_mode_, 1);
 	}
 }
 bool UrHardwareInterface::canSwitch(
@@ -257,23 +242,6 @@ bool UrHardwareInterface::prepareSwitch(
 					return false;
 				}
 			}
-		// Be very strict about the the force_interface as it is experimental!
-		} else if (controller_it->type
-				== "effort_controllers/JointTrajectoryController") {
-			if (force_interface_running_) {
-				ROS_ERROR(
-						"%s: An interface of that type (%s) is already running",
-						controller_it->name.c_str(),
-						controller_it->type.c_str());
-				return false;
-			}
-			if (velocity_interface_running_ || position_interface_running_) {
-				ROS_ERROR(
-						"%s (type %s) can not be run simultaneously with any other interface!\nPlease restart the driver with the correct interface and avoid the need to switch to the correct interface!",
-						controller_it->name.c_str(),
-						controller_it->type.c_str());
-				return false;
-			}
 		}
 	}
 
@@ -296,15 +264,8 @@ void UrHardwareInterface::doSwitch(
 				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = false;
 			std::vector<double> tmp;
-			robot_->closeServo(tmp);
+			robot_->closeServo(tmp,true);
 			ROS_DEBUG("Stopping position interface");
-		}
-		if (controller_it->type
-				== "effort_controllers/JointTrajectoryController") {
-			force_interface_running_ = false;
-			std::vector<double> tmp;
-			robot_->closeServo(tmp, true);
-			ROS_DEBUG("Stopping force interface");
 		}
 	}
 	for (std::list<hardware_interface::ControllerInfo>::const_iterator controller_it =
@@ -318,14 +279,9 @@ void UrHardwareInterface::doSwitch(
 		if (controller_it->type
 				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = true;
-			robot_->uploadProg();
-			ROS_DEBUG("Starting position interface");
-		}
-		if (controller_it->type
-				== "effort_controllers/JointTrajectoryController") {
-			force_interface_running_ = true;
+			//robot_->uploadProg();
 			robot_->uploadForceProg();
-			ROS_DEBUG("Starting force interface");
+			ROS_DEBUG("Starting position interface");
 		}
 	}
 

@@ -115,11 +115,9 @@ protected:
 	hardware_interface::ForceTorqueSensorInterface force_torque_interface_;
 	hardware_interface::PositionJointInterface position_joint_interface_;
 	hardware_interface::VelocityJointInterface velocity_joint_interface_;
-	hardware_interface::EffortJointInterface force_joint_interface_;
 
 	bool velocity_interface_running_;
 	bool position_interface_running_;
-	bool force_interface_running_;
 
 	// Shared memory
 	std::vector<std::string> joint_names_;
@@ -128,9 +126,18 @@ protected:
 	std::vector<double> joint_effort_;
 	std::vector<double> joint_position_command_;
 	std::vector<double> joint_velocity_command_;
-	std::vector<double> joint_force_command_;
 	std::vector<double> prev_joint_velocity_command_;
-		std::size_t num_joints_;
+
+	std::size_t num_joints_;
+
+	// This vector enables compliant axes (from tool frame, xyz rpy) when using force_mode.
+	// Each element in the vector may only be assigned a value of 0 or 1.
+	std::vector<int>    force_mode_compliance_ = {0, 0, 0, 0, 0, 0};
+
+	// The forces to be applied on each axes of the tool frame (xyz rpy).
+	std::vector<double> force_mode_forces_     = {0., 0., 0., 0., 0., 0.};
+	int use_force_mode_                        = 0;
+
 	double robot_force_[3] = { 0., 0., 0. };
 	double robot_torque_[3] = { 0., 0., 0. };
 
