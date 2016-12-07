@@ -25,6 +25,7 @@
 #include "ur_communication.h"
 #include "do_output.h"
 #include <vector>
+#include <numeric>
 #include <math.h>
 #include <string>
 #include <sys/types.h>
@@ -76,8 +77,8 @@ public:
 	/// Essentially the same as forcej, but with more parameters to pass as arguments for the force_mode command.
 	void forcej(std::vector<double> positions,
 			std::vector<int> compliance,
-			std::vector<double> forces,
-			int use_force_mode = 0, int keepalive = 1);
+			std::vector<double> wrench,
+			int keepalive = 1);
 
 	void stopTraj();
 

@@ -132,21 +132,10 @@ protected:
 	std::vector<double> joint_position_command_;
 	std::vector<double> joint_velocity_command_;
 	std::vector<double> prev_joint_velocity_command_;
+	std::vector<double> wrench_command_  = {0., 0., 0., 0., 0., 0.};
+	std::vector<int> compliance_command_ = {0, 0, 0, 0, 0, 0};
 
 	std::size_t num_joints_;
-
-	// This vector enables compliant axes (from tool frame, xyz rpy) when using force_mode.
-	// Each element in the vector may only be assigned a value of 0 or 1.
-	// TODO: Rename to compliance_command_
-	std::vector<int> force_mode_compliance_ = {0, 0, 0, 0, 0, 0};
-
-	// The forces to be applied on each axes of the tool frame (xyz rpy).
-	// TODO: Rename to wrench_command_
-	std::vector<double> force_mode_forces_ = {0., 0., 0., 0., 0., 0.};
-
-	// TODO: Do we pass this to the force_mode_position_interface or do we check whether compliance vector is zero?
-	// I think it is unnecessary to pass this as we can calculate in forcej() whether this flag is high or low.
-	int use_force_mode_ = 0;
 
 	double robot_force_[3] = { 0., 0., 0. };
 	double robot_torque_[3] = { 0., 0., 0. };

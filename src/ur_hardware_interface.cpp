@@ -124,8 +124,8 @@ void UrHardwareInterface::init() {
 	// Also register handles for force_mode parameters.
 	//for (std::size_t i = 0; i < force_mode_forces_.size(); ++i) {
 		//force_mode_position_interface_.registerHandle(
-		//		ForceModeHandle(&force_mode_compliance_[i],
-		//				&force_mode_forces_[i]));
+		//		ForceModeHandle(&compliance_command_[i],
+		//				&wrench_command_[i]));
 	//}
 
 	// Create force torque interface
@@ -182,10 +182,10 @@ void UrHardwareInterface::write() {
 		robot_->setSpeed(cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5],  max_vel_change_*125);
 	} else if (position_interface_running_) {
 		//robot_->servoj(joint_position_command_);
-		robot_->forcej(joint_position_command_, force_mode_compliance_, force_mode_forces_, use_force_mode_, 1);
+		robot_->forcej(joint_position_command_, compliance_command_, wrench_command_, 1);
 	}
 	//else if (force_mode_position_interface_running_) {
-	//	robot_->forcej(joint_position_command_, force_mode_compliance_, force_mode_forces_, use_force_mode_, 1);
+	//	robot_->forcej(joint_position_command_, compliance_command_, wrench_command_, 1);
 	//}
 }
 bool UrHardwareInterface::canSwitch(

@@ -145,7 +145,7 @@ void UrDriver::servoj(std::vector<double> positions, int keepalive) {
 void UrDriver::forcej(std::vector<double> positions,
 		std::vector<int> compliance,
 		std::vector<double> forces,
-		int use_force_mode, int keepalive) {
+		int keepalive) {
 	if (!reverse_connected_) {
 		print_error(
 				"UrDriver::forcej called without a reverse connection present. Keepalive: "
@@ -163,6 +163,9 @@ void UrDriver::forcej(std::vector<double> positions,
 			+ ", " + std::to_string(forces.size()));
 		return;
 	}
+
+	int sum = std::accumulate(compliance.begin(), compliance.end(), 0);
+	int use_force_mode = sum > 0 ? 1 : 0;
 
 	// (6 + 1 + 1 + 6 + 6) * 4 = 80
 	unsigned char buf[80];
@@ -421,7 +424,7 @@ void UrDriver::closeServo(std::vector<double> positions, bool use_force_mode) {
 	if (use_force_mode) {
 		std::vector<int> compliance = {0,0,0,0,0,0};
 		std::vector<double> forces  = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-		UrDriver::forcej(rt_interface_->robot_state_->getQActual(), compliance, forces, 0, 0);
+		UrDriver::forcej(rt_interface_->robot_state_->getQActual(), compliance, forces, 0);
 	} else {
 		if (positions.size() != 6)
 			UrDriver::servoj(rt_interface_->robot_state_->getQActual(), 0);
