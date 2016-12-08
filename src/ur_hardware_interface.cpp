@@ -113,20 +113,14 @@ void UrHardwareInterface::init() {
 						joint_state_interface_.getHandle(joint_names_[i]),
 						&joint_velocity_command_[i]));
 		prev_joint_velocity_command_[i] = 0.;
-
-		// Register regular joint handles for the force mode interface.
-		//force_mode_position_interface_.registerHandle(
-		//		hardware_interface::JointHandle(
-		//				joint_state_interface_.getHandle(joint_names_[i]),
-		//				&joint_position_command_[i]));
 	}
 
 	// Also register handles for force_mode parameters.
-	//for (std::size_t i = 0; i < force_mode_forces_.size(); ++i) {
-		//force_mode_position_interface_.registerHandle(
-		//		ForceModeHandle(&compliance_command_[i],
-		//				&wrench_command_[i]));
-	//}
+	for (std::size_t i = 0; i < wrench_command_.size(); ++i) {
+		force_mode_interface_.registerHandle(
+				hardware_interface::ForceModeHandle(force_mode_resources_[i], &compliance_command_[i],
+						&wrench_command_[i]));
+	}
 
 	// Create force torque interface
 	force_torque_interface_.registerHandle(
@@ -137,9 +131,11 @@ void UrHardwareInterface::init() {
 	registerInterface(&position_joint_interface_); // From RobotHW base class.
 	registerInterface(&velocity_joint_interface_); // From RobotHW base class.
 	registerInterface(&force_torque_interface_);   // From RobotHW base class.
-	velocity_interface_running_ = false;
-	position_interface_running_ = false;
-	//force_mode_position_interface_running_ = false;
+	registerInterface(&force_mode_interface_);     // From RobotHW base class.
+
+	velocity_interface_running_   = false;
+	position_interface_running_   = false;
+	force_mode_interface_running_ = false;
 }
 
 void UrHardwareInterface::read() {
@@ -181,12 +177,10 @@ void UrHardwareInterface::write() {
 		}
 		robot_->setSpeed(cmd[0], cmd[1], cmd[2], cmd[3], cmd[4], cmd[5],  max_vel_change_*125);
 	} else if (position_interface_running_) {
-		//robot_->servoj(joint_position_command_);
-		robot_->forcej(joint_position_command_, compliance_command_, wrench_command_, 1);
+		robot_->servoj(joint_position_command_);
+	} else if (force_mode_interface_running_) {
+		robot_->forcej(joint_position_command_, compliance_command_, wrench_command_);
 	}
-	//else if (force_mode_position_interface_running_) {
-	//	robot_->forcej(joint_position_command_, compliance_command_, wrench_command_, 1);
-	//}
 }
 bool UrHardwareInterface::canSwitch(
 		const std::list<hardware_interface::ControllerInfo> &start_list,
@@ -260,6 +254,19 @@ bool UrHardwareInterface::prepareSwitch(
 					return false;
 				}
 			}
+		} else if (controller_it->type
+				== "force_mode_controllers/ForceModeController") {
+			if (force_mode_interface_running_) {
+				ROS_ERROR(
+						"%s: An interface of that type (%s) is already running",
+						controller_it->name.c_str(),
+						controller_it->type.c_str());
+				return false;
+			}
+			if (velocity_interface_running_ || position_interface_running_) {
+				ROS_ERROR_STREAM("Please restart the hardware interface with the force mode controller enabled if you want to test this new feature!");
+				return false;
+			}
 		}
 	}
 
@@ -283,8 +290,15 @@ void UrHardwareInterface::doSwitch(
 				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = false;
 			std::vector<double> tmp;
-			robot_->closeServo(tmp,true);
+			robot_->closeServo(tmp);
 			ROS_DEBUG("Stopping position interface");
+		}
+		if (controller_it->type
+				== "force_mode_controllers/ForceModeController") {
+			force_mode_interface_running_ = false;
+			std::vector<double> tmp;
+			robot_->closeServo(tmp,true);
+			ROS_DEBUG("Stopping force mode interface");
 		}
 	}
 	for (std::list<hardware_interface::ControllerInfo>::const_iterator controller_it =
@@ -298,11 +312,18 @@ void UrHardwareInterface::doSwitch(
 		if (controller_it->type
 				== "position_controllers/JointTrajectoryController") {
 			position_interface_running_ = true;
-			//robot_->uploadProg();
-			robot_->uploadForceProg();
+			robot_->uploadProg();
 			ROS_DEBUG("Starting position interface");
 		}
+		if (controller_it->type
+				== "force_mode_controllers/ForceModeController") {
+			force_mode_interface_running_ = true;
+			robot_->uploadForceProg();
+			ROS_DEBUG("Starting force mode interface");
+		}
 	}
+
+	ROS_WARN_STREAM("force_mode_interface_running: " << force_mode_interface_running_);
 
 }
 

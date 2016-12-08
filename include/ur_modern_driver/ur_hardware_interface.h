@@ -68,7 +68,7 @@
 #include <math.h>
 #include "do_output.h"
 #include "ur_driver.h"
-//#include "force_mode_position_interface.h"
+#include "force_mode_interface.h"
 
 namespace ros_control_ur {
 
@@ -116,16 +116,15 @@ protected:
 	hardware_interface::ForceTorqueSensorInterface force_torque_interface_;
 	hardware_interface::PositionJointInterface position_joint_interface_;
 	hardware_interface::VelocityJointInterface velocity_joint_interface_;
-
-	// TODO: Implement our own interface that supports positions, compliance and forces.
-	//ForceModePositionJointInterface force_mode_position_interface_;
+	hardware_interface::ForceModeInterface force_mode_interface_;
 
 	bool velocity_interface_running_;
 	bool position_interface_running_;
-	//bool force_mode_position_interface_running_;
+	bool force_mode_interface_running_;
 
 	// Shared memory
 	std::vector<std::string> joint_names_;
+	std::vector<std::string> force_mode_resources_ = {"x","y","z","r","p","y"};
 	std::vector<double> joint_position_;
 	std::vector<double> joint_velocity_;
 	std::vector<double> joint_effort_;

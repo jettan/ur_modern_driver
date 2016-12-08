@@ -22,6 +22,12 @@ force_torque_sensor_controller:
    type:         force_torque_sensor_controller/ForceTorqueSensorController
    publish_rate: 125
 
+# Force Mode Controller
+force_mode_pos_traj_controller:
+    type: force_mode_controller/ForceModeController
+    state_publish_rate: 125
+
+
 # Joint Trajectory Controller - position based -------------------------------
 # For detailed explanations of parameter see http://wiki.ros.org/joint_trajectory_controller
 pos_based_pos_traj_controller:

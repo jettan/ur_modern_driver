@@ -1,0 +1,10 @@
+<library path="lib/libforce_mode_controller">
+
+  <class name="force_mode_controllers/ForceModeController"
+         type="force_mode_controllers::ForceModeController"
+         base_class_type="controller_interface::ControllerBase">
+    <description>
+      The ForceModeController controls the positions of each joint as well as the wrench on UR robots.
+    </description>
+  </class>
+</library>

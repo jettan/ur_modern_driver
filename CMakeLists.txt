@@ -7,7 +7,9 @@ add_definitions( -DROS_BUILD )
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   hardware_interface
+  controller_interface
   controller_manager
+  realtime_tools
   actionlib
   control_msgs
   geometry_msgs
@@ -111,8 +113,19 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES ur_modern_driver
-  CATKIN_DEPENDS hardware_interface controller_manager actionlib control_msgs geometry_msgs roscpp sensor_msgs trajectory_msgs ur_msgs
-  DEPENDS ur_hardware_interface
+  CATKIN_DEPENDS
+  hardware_interface
+  controller_interface
+  controller_manager
+  actionlib
+  control_msgs
+  geometry_msgs
+  roscpp
+  sensor_msgs
+  trajectory_msgs
+  ur_msgs
+  DEPENDS
+  ur_hardware_interface
 )
 
 ###########
@@ -140,8 +153,17 @@ include_directories(include
 
 ## Declare a C++ library
 
+# Force Mode Controller
+add_library(force_mode_controller
+    src/force_mode_controller.cpp
+)
+target_link_libraries(force_mode_controller ${catkin_LIBRARIES})
+
 # Hardware Interface
-add_library(ur_hardware_interface src/ur_hardware_interface.cpp)
+add_library(ur_hardware_interface
+    src/ur_hardware_interface.cpp
+#    src/force_mode_interface.cpp
+)
 target_link_libraries(ur_hardware_interface
   ${catkin_LIBRARIES}
 )
@@ -188,6 +210,10 @@ install(TARGETS ur_driver ur_hardware_interface
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
   FILES_MATCHING PATTERN "*.h"
+)
+
+install(FILES force_mode_controller_plugins.xml
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
