@@ -157,6 +157,8 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 
 void ForceModeController::stopping(const ros::Time & /*time*/) {}
 
+void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg) {}
+
 } // namespace
 
 PLUGINLIB_EXPORT_CLASS(force_mode_controllers::ForceModeController, controller_interface::ControllerBase)

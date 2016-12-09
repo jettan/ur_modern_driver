@@ -11,10 +11,13 @@
 #include <urdf/model.h>
 
 #include <control_msgs/JointTrajectoryControllerState.h>
+#include <trajectory_msgs/JointTrajectory.h>
 
 #include <controller_interface/multi_interface_controller.h>
 #include <realtime_tools/realtime_buffer.h>
 #include <realtime_tools/realtime_publisher.h>
+#include <realtime_tools/realtime_server_goal_handle.h>
+
 #include <hardware_interface/joint_command_interface.h>
 #include <ur_modern_driver/force_mode_interface.h>
 
@@ -35,9 +38,13 @@ public:
 private:
 	typedef realtime_tools::RealtimePublisher<control_msgs::JointTrajectoryControllerState> StatePublisher;
 	typedef boost::scoped_ptr<StatePublisher>                                               StatePublisherPtr;
+	typedef trajectory_msgs::JointTrajectory::ConstPtr                                      JointTrajectoryConstPtr;
 
 	/// The node handle of this controller.
 	ros::NodeHandle controller_nh_;
+
+	/// Subscriber to receive an individual position command to reset the position of the robot.
+	ros::Subscriber position_command_subscriber_;
 
 	/// Controller state publisher.
 	StatePublisher state_publisher_;
@@ -63,6 +70,9 @@ private:
 
 	/// The command buffer.
 	realtime_tools::RealtimeBuffer<std::tuple<int,double>> command_buffer_;
+
+	/// Callback for when the position command subscriber receives a new command.
+	void positionCommandCB(const JointTrajectoryConstPtr & msg);
 };
 
 } // namespace
