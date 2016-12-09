@@ -90,25 +90,23 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 	// Initialize joint names and number of joints.
 	joint_names_ = internal::getStrings(controller_nh_, "joints");
 	if (joint_names_.empty()) {
-		ROS_ERROR_STREAM("Cannot initialize controller because joint names are empty.");
 		return false;
 	}
 	const unsigned int n_joints = joint_names_.size();
 
 	urdf::ModelSharedPtr urdf = internal::getUrdf(root_nh, "robot_description");
 	if (!urdf) {
-		ROS_ERROR_STREAM("Cannot initialize controller because robot description could not be loaded.");
 		return false;
 	}
 
 	std::vector<urdf::JointConstSharedPtr> urdf_joints = internal::getUrdfJoints(*urdf, joint_names_);
 	if (urdf_joints.empty()) {
-		ROS_ERROR_STREAM("Cannot initialize controller because robot description contains no joints");
 		return false;
 	}
 	assert(n_joints == urdf_joints.size());
 
 	joints_.resize(n_joints);
+	entries_.resize(6);
 
 	// Obtain pointers to the wanted interfaces.
 	hardware_interface::PositionJointInterface * p = hw->get<hardware_interface::PositionJointInterface>();
@@ -123,22 +121,42 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 			return false;
 		}
 	}
+
+	// Claim force mode handles.
+	for (unsigned int i = 0; i < 6; ++i) {
+		try {
+			entries_[i] = f->getHandle(force_mode_resources_[i]);
+		} catch (...) {
+			ROS_ERROR_STREAM_NAMED(name_, "Could not find force mode resource '" << force_mode_resources_[i] << "' in 'ForceModeInterface'.");
+		}
+	}
 	return true;
 }
 
 void ForceModeController::starting(const ros::Time & time) {
+	// Semantic zero: set the position command to the current position for each joint.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
 		joints_[i].setCommand(joints_[i].getPosition());
+	}
+
+	// Set all forces/compliance to 0.
+	for (unsigned int i = 0; i < entries_.size(); ++i) {
+		entries_[i].setCommand(0, 0);
 	}
 }
 
 void ForceModeController::update(const ros::Time & time, const ros::Duration & period) {
-	// TODO: Call the setCommand for each of the interfaces.
+	for (unsigned int i = 0; i < joints_.size(); ++i) {
+		joints_[i].setCommand(joints_[i].getPosition());
+	}
+
+	for (unsigned int i = 0; i < entries_.size(); ++i) {
+		entries_[i].setCommand(0, 0);
+	}
 }
 
 void ForceModeController::stopping(const ros::Time & /*time*/) {}
 
 } // namespace
 
-// Call pluginlib macro to export the class.
 PLUGINLIB_EXPORT_CLASS(force_mode_controllers::ForceModeController, controller_interface::ControllerBase)

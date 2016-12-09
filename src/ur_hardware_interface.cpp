@@ -189,7 +189,7 @@ bool UrHardwareInterface::canSwitch(
 	return prepareSwitch(start_list, stop_list);
 }
 
-// TODO: Add case for force_mode_position_interface
+// TODO: Improve strictness for force_mode_position_interface
 bool UrHardwareInterface::prepareSwitch(
 		const std::list<hardware_interface::ControllerInfo> &start_list,
 		const std::list<hardware_interface::ControllerInfo> &stop_list) const {

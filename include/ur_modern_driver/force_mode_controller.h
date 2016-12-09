@@ -51,6 +51,10 @@ private:
 	/// Names of the controlled joints.
 	std::vector<std::string> joint_names_;
 
+	// FIXME: Read resource names from parameter server.
+	/// Names of the force mode resources.
+	std::vector<std::string> force_mode_resources_ = {"x", "y", "z", "roll", "pitch", "yaw"};
+
 	/// Handles to the controlled joints.
 	std::vector<hardware_interface::JointHandle> joints_;
 
