@@ -23,9 +23,16 @@ force_torque_sensor_controller:
    publish_rate: 125
 
 # Force Mode Controller
-force_mode_pos_traj_controller:
-    type: force_mode_controller/ForceModeController
-    state_publish_rate: 125
+force_mode_controller:
+   type: force_mode_controllers/ForceModeController
+   joints:
+    - shoulder_pan_joint
+    - shoulder_lift_joint
+    - elbow_joint
+    - wrist_1_joint
+    - wrist_2_joint
+    - wrist_3_joint
+   state_publish_rate: 125
 
 
 # Joint Trajectory Controller - position based -------------------------------

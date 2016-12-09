@@ -124,7 +124,7 @@ protected:
 
 	// Shared memory
 	std::vector<std::string> joint_names_;
-	std::vector<std::string> force_mode_resources_ = {"x","y","z","r","p","y"};
+	std::vector<std::string> force_mode_resources_ = {"x","y","z","roll","pitch","yaw"};
 	std::vector<double> joint_position_;
 	std::vector<double> joint_velocity_;
 	std::vector<double> joint_effort_;

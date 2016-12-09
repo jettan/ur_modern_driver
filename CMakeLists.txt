@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   control_msgs
   geometry_msgs
   roscpp
+  urdf
   sensor_msgs
   std_msgs
   trajectory_msgs
@@ -121,6 +122,7 @@ catkin_package(
   control_msgs
   geometry_msgs
   roscpp
+  urdf
   sensor_msgs
   trajectory_msgs
   ur_msgs
