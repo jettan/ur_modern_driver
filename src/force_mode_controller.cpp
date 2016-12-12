@@ -139,6 +139,7 @@ void ForceModeController::starting(const ros::Time & time) {
 	time_buffer_.initRT(time_data);
 
 	controller_counter_ = 0;
+	step_counter_       = 0;
 
 	// Semantic zero: set the position command to the current position for each joint.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
@@ -199,7 +200,10 @@ void ForceModeController::stopping(const ros::Time & /*time*/) {}
 void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg) {}
 
 // TODO: Do things and fill in compliance and force vector.
-void ForceModeController::updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces) {}
+void ForceModeController::updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces) {
+	// Do nothing if the desired number of steps have been taken.
+	if (step_counter_ >= steps_per_trial_) return;
+}
 
 } // namespace
 

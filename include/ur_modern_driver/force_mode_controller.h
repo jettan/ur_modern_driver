@@ -75,11 +75,17 @@ private:
 	/// The compliance to be set.
 	std::vector<int> compliance_command_;
 
-	/// Counter for keeping track of the steps of the controller.
+	/// Counter for keeping track of the real time steps of the controller.
 	int controller_counter_;
 
 	/// The number of real time steps it takes before taking one controller step (for downsampling).
 	int controller_step_length_;
+
+	/// Counter for keeping track which step the controller is in.
+	int step_counter_;
+
+	/// Number of steps to do per trial.
+	int steps_per_trial_;
 
 	/// Callback for when the position command subscriber receives a new command.
 	void positionCommandCB(const JointTrajectoryConstPtr & msg);
