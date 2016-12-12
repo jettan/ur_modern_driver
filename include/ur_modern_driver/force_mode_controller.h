@@ -69,8 +69,25 @@ private:
 	/// The realtime buffer containing data about time.
 	realtime_tools::RealtimeBuffer<TimeData> time_buffer_;
 
+	/// The forces to be set.
+	std::vector<double> force_command_;
+
+	/// The compliance to be set.
+	std::vector<int> compliance_command_;
+
+	/// Counter for keeping track of the steps of the controller.
+	int controller_counter_;
+
+	/// The number of real time steps it takes before taking one controller step (for downsampling).
+	int controller_step_length_;
+
 	/// Callback for when the position command subscriber receives a new command.
 	void positionCommandCB(const JointTrajectoryConstPtr & msg);
+
+	// TODO: Add sample as an argument once that is implemented.
+	/// Update function for the controller to fill in data.
+	void updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces);
+
 };
 
 } // namespace

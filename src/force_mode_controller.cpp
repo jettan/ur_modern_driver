@@ -101,6 +101,8 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 
 	joints_.resize(n_joints);
 	entries_.resize(6);
+	force_command_.resize(6);
+	compliance_command_.resize(6);
 
 	// Obtain pointers to the wanted interfaces.
 	hardware_interface::PositionJointInterface * p = hw->get<hardware_interface::PositionJointInterface>();
@@ -130,6 +132,14 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 }
 
 void ForceModeController::starting(const ros::Time & time) {
+	// Initialize the realtime buffer.
+	TimeData time_data;
+	time_data.time = time;
+	time_data.uptime = ros::Time(0.0);
+	time_buffer_.initRT(time_data);
+
+	controller_counter_ = 0;
+
 	// Semantic zero: set the position command to the current position for each joint.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
 		joints_[i].setCommand(joints_[i].getPosition());
@@ -137,7 +147,9 @@ void ForceModeController::starting(const ros::Time & time) {
 
 	// Set all forces/compliance to 0.
 	for (unsigned int i = 0; i < entries_.size(); ++i) {
-		entries_[i].setCommand(0, 0);
+		compliance_command_[i] = 0;
+		force_command_[i]      = 0.0;
+		entries_[i].setCommand(compliance_command_[i], force_command_[i]);
 	}
 }
 
@@ -164,7 +176,13 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 		joint_state.velocity[i] = joints_[i].getVelocity();
 	}
 
-	// Do something smart like obtaining an action from an agent.
+	// Bump the counter.
+	controller_counter_ = controller_counter_++ % controller_step_length_;
+
+	// Only perform controller step if the counter equals 0 to downsample controller updates.
+	if (!controller_counter_) {
+		updateControllers(time, compliance_command_, force_command_);
+	}
 
 	// Make the robot do the action.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
@@ -172,14 +190,16 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 	}
 
 	for (unsigned int i = 0; i < entries_.size(); ++i) {
-		entries_[i].setCommand(0, 0);
+		entries_[i].setCommand(compliance_command_[i], force_command_[i]);
 	}
-
 }
 
 void ForceModeController::stopping(const ros::Time & /*time*/) {}
 
 void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg) {}
+
+// TODO: Do things and fill in compliance and force vector.
+void ForceModeController::updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces) {}
 
 } // namespace
 
