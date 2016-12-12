@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <string>
+#include <random>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/scoped_ptr.hpp>
@@ -94,6 +95,8 @@ private:
 	/// Update function for the controller to fill in data.
 	void updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces);
 
+	std::default_random_engine generator_;
+	std::uniform_real_distribution<double> distribution_;
 };
 
 } // namespace
