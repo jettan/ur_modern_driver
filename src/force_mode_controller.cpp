@@ -81,12 +81,6 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 	// Obtain the given name of the controller.
 	name_ = internal::getLeafNamespace(controller_nh_);
 
-	// Obtain the publishing rate of the controller's state.
-	double state_publish_rate = 125.0;
-	controller_nh_.getParam("state_publish_rate", state_publish_rate);
-	ROS_INFO_STREAM("Controller state will be published at " << state_publish_rate << "Hz.");
-	state_publisher_period_  = ros::Duration(1.0 / state_publish_rate);
-
 	// Initialize joint names and number of joints.
 	joint_names_ = internal::getStrings(controller_nh_, "joints");
 	if (joint_names_.empty()) {
@@ -128,8 +122,10 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 			entries_[i] = f->getHandle(force_mode_resources_[i]);
 		} catch (...) {
 			ROS_ERROR_STREAM_NAMED(name_, "Could not find force mode resource '" << force_mode_resources_[i] << "' in 'ForceModeInterface'.");
+			return false;
 		}
 	}
+
 	return true;
 }
 
@@ -146,6 +142,31 @@ void ForceModeController::starting(const ros::Time & time) {
 }
 
 void ForceModeController::update(const ros::Time & time, const ros::Duration & period) {
+	// Update the real time buffer.
+	TimeData time_data;
+	time_data.time   = time;
+	time_data.period = period;
+	time_data.uptime = time_buffer_.readFromRT()->uptime + period;
+	time_buffer_.writeFromNonRT(time_data);
+
+	// Get the state of the robot.
+	sensor_msgs::JointState joint_state;
+	joint_state.header.stamp = time;
+
+	joint_state.name.resize(joint_names_.size());
+	joint_state.position.resize(joints_.size());
+	joint_state.velocity.resize(joints_.size());
+
+	joint_state.name = joint_names_;
+
+	for (unsigned int i = 0; i < joints_.size(); ++i) {
+		joint_state.position[i] = joints_[i].getPosition();
+		joint_state.velocity[i] = joints_[i].getVelocity();
+	}
+
+	// Do something smart like obtaining an action from an agent.
+
+	// Make the robot do the action.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
 		joints_[i].setCommand(joints_[i].getPosition());
 	}
@@ -153,6 +174,7 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 	for (unsigned int i = 0; i < entries_.size(); ++i) {
 		entries_[i].setCommand(0, 0);
 	}
+
 }
 
 void ForceModeController::stopping(const ros::Time & /*time*/) {}

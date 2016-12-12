@@ -10,13 +10,11 @@
 #include <ros/node_handle.h>
 #include <urdf/model.h>
 
-#include <control_msgs/JointTrajectoryControllerState.h>
 #include <trajectory_msgs/JointTrajectory.h>
+#include <sensor_msgs/JointState.h>
 
 #include <controller_interface/multi_interface_controller.h>
 #include <realtime_tools/realtime_buffer.h>
-#include <realtime_tools/realtime_publisher.h>
-#include <realtime_tools/realtime_server_goal_handle.h>
 
 #include <hardware_interface/joint_command_interface.h>
 #include <ur_modern_driver/force_mode_interface.h>
@@ -36,8 +34,14 @@ public:
 	virtual void update(const ros::Time & time, const ros::Duration & period);
 
 private:
-	typedef realtime_tools::RealtimePublisher<control_msgs::JointTrajectoryControllerState> StatePublisher;
-	typedef boost::scoped_ptr<StatePublisher>                                               StatePublisherPtr;
+	// Copied from JointTrajectoryController.
+	struct TimeData {
+		TimeData() : time(0.0), period(0.0), uptime(0.0) {}
+		ros::Time     time;   ///< Time of last update cycle
+		ros::Duration period; ///< Period of last update cycle
+		ros::Time     uptime; ///< Controller uptime. Set to zero at every restart.
+	};
+
 	typedef trajectory_msgs::JointTrajectory::ConstPtr                                      JointTrajectoryConstPtr;
 
 	/// The node handle of this controller.
@@ -45,12 +49,6 @@ private:
 
 	/// Subscriber to receive an individual position command to reset the position of the robot.
 	ros::Subscriber position_command_subscriber_;
-
-	/// Controller state publisher.
-	StatePublisher state_publisher_;
-
-	/// The period to publish the state of this controller.
-	ros::Duration state_publisher_period_;
 
 	/// The name of this controller.
 	std::string name_;
@@ -68,8 +66,8 @@ private:
 	/// Handles to the controlled positional/rotational axes for force mode.
 	std::vector<hardware_interface::ForceModeHandle> entries_;
 
-	/// The command buffer.
-	realtime_tools::RealtimeBuffer<std::tuple<int,double>> command_buffer_;
+	/// The realtime buffer containing data about time.
+	realtime_tools::RealtimeBuffer<TimeData> time_buffer_;
 
 	/// Callback for when the position command subscriber receives a new command.
 	void positionCommandCB(const JointTrajectoryConstPtr & msg);
