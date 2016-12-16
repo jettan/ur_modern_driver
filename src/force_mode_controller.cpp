@@ -192,9 +192,15 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 		updateControllers(time, compliance_command_, force_command_);
 	}
 
+	// TODO: Check for error/tolerance and reset flag when desired position is reached.
+
 	// Make the robot do the action.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
-		joints_[i].setCommand(joints_[i].getPosition());
+		if (position_command_active_) {
+			joints_[i].setCommand(position_command_[i]);
+		} else {
+			joints_[i].setCommand(joints_[i].getPosition());
+		}
 	}
 
 	for (unsigned int i = 0; i < entries_.size(); ++i) {
