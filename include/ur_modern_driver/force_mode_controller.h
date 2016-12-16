@@ -43,7 +43,7 @@ private:
 		ros::Time     uptime; ///< Controller uptime. Set to zero at every restart.
 	};
 
-	typedef trajectory_msgs::JointTrajectory::ConstPtr                                      JointTrajectoryConstPtr;
+	typedef trajectory_msgs::JointTrajectory::ConstPtr JointTrajectoryConstPtr;
 
 	/// The node handle of this controller.
 	ros::NodeHandle controller_nh_;
@@ -70,6 +70,9 @@ private:
 	/// The realtime buffer containing data about time.
 	realtime_tools::RealtimeBuffer<TimeData> time_buffer_;
 
+	/// The position to go to if position command is active.
+	std::vector<double> position_command_;
+
 	/// The forces to be set.
 	std::vector<double> force_command_;
 
@@ -87,6 +90,8 @@ private:
 
 	/// Number of steps to do per trial.
 	int steps_per_trial_;
+
+	bool position_command_active_;
 
 	/// Callback for when the position command subscriber receives a new command.
 	void positionCommandCB(const JointTrajectoryConstPtr & msg);

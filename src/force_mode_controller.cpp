@@ -101,8 +101,11 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 
 	joints_.resize(n_joints);
 	entries_.resize(6);
+	position_command_.resize(n_joints);
 	force_command_.resize(6);
 	compliance_command_.resize(6);
+
+	position_command_active_ = false;
 
 	// Obtain pointers to the wanted interfaces.
 	hardware_interface::PositionJointInterface * p = hw->get<hardware_interface::PositionJointInterface>();
@@ -128,6 +131,9 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 		}
 	}
 
+	// Subscribe on ~command topic.
+	position_command_subscriber_ = controller_nh_.subscribe("command", 1, &ForceModeController::positionCommandCB, this);
+
 	return true;
 }
 
@@ -143,7 +149,8 @@ void ForceModeController::starting(const ros::Time & time) {
 
 	// Semantic zero: set the position command to the current position for each joint.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
-		joints_[i].setCommand(joints_[i].getPosition());
+		position_command_[i] = joints_[i].getPosition();
+		joints_[i].setCommand(position_command_[i]);
 	}
 
 	// Set all forces/compliance to 0.
@@ -197,7 +204,14 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 
 void ForceModeController::stopping(const ros::Time & /*time*/) {}
 
-void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg) {}
+// FIXME: Check for joint names/ordering etc.
+void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg) {
+	ROS_INFO_STREAM("Received position command.");
+	position_command_active_ = true;
+	for (unsigned int i = 0; i < joints_.size(); ++i) {
+		position_command_[i] = msg->points[0].positions[i];
+	}
+}
 
 // TODO: Do things and fill in compliance and force vector.
 void ForceModeController::updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces) {
@@ -217,8 +231,6 @@ void ForceModeController::updateControllers(ros::Time time, std::vector<int> & c
 			forces[i]      = force;
 		}
 	}
-
-	ROS_INFO_STREAM("Step " << step_counter_ << ": " << forces[0] << "," << forces[1] << "," << forces[2]);
 
 	step_counter_++;
 }
