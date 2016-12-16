@@ -72,7 +72,7 @@ std::string getLeafNamespace(const ros::NodeHandle & nh) {
 
 } // internal namespace
 
-ForceModeController::ForceModeController() : distribution_(-1.0, 1.0), steps_per_trial_(1000), controller_step_length_(5) {}
+ForceModeController::ForceModeController() : distribution_(-1.0, 1.0), steps_per_trial_(250), controller_step_length_(5) {}
 
 bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle & root_nh, ros::NodeHandle & controller_nh) {
 	// Cache the controller node handle.
@@ -178,7 +178,7 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 	}
 
 	// Bump the counter.
-	controller_counter_ = controller_counter_++ % controller_step_length_;
+	controller_counter_ = (controller_counter_+ 1) % controller_step_length_;
 
 	// Only perform controller step if the counter equals 0 to downsample controller updates.
 	if (!controller_counter_) {
@@ -201,22 +201,24 @@ void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg)
 
 // TODO: Do things and fill in compliance and force vector.
 void ForceModeController::updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces) {
-	// Do nothing if the desired number of steps have been taken.
-	if (step_counter_ >= steps_per_trial_) return;
-
 	// Reset compliance and forces to zero first.
 	for (unsigned int i = 0; i < 6; ++i) {
 		forces[i]      = 0;
 		compliances[i] = 0;
 	}
 
-	for (unsigned int i = 0; i < 3; ++i) {
+	// Do nothing if the desired number of steps have been taken.
+	if (step_counter_ >= steps_per_trial_) return;
+
+	for (unsigned int i = 0; i < 6; ++i) {
 		double force = distribution_(generator_) * 20;
 		if (force > 1 || force < -1) {
 			compliances[i] = 1;
 			forces[i]      = force;
 		}
 	}
+
+	ROS_INFO_STREAM("Step " << step_counter_ << ": " << forces[0] << "," << forces[1] << "," << forces[2]);
 
 	step_counter_++;
 }

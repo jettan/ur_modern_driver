@@ -351,6 +351,8 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tforce_state = cmd_force_state\n";
 	cmd_str += "\t\t\t\tif force_state == FORCE_ACTIVE:\n";
 	cmd_str += "\t\t\t\t\tforce_mode(tool_pose(), c, f, 2, FORCE_LIMITS)\n";
+	cmd_str += "\t\t\t\telse:\n";
+	cmd_str += "\t\t\t\t\tend_force_mode()\n";
 	cmd_str += "\t\t\t\tend\n";
 
 	if (sec_interface_->robot_state_->getVersion() >= 3.1)
