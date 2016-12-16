@@ -310,6 +310,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tFORCE_ACTIVE = 1\n";
 	cmd_str += "\tFORCE_LIMITS = [0.1, 0.1, 0.15, 0.349, 0.349, 0.349]\n";
 	cmd_str += "\tcmd_servo_state = SERVO_IDLE\n";
+	cmd_str += "\tprv_force_state = FORCE_IDLE\n";
 	cmd_str += "\tcmd_force_state = FORCE_IDLE\n";
 	cmd_str += "\tcmd_servo_q = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]\n";
 	cmd_str += "\tcmd_force_c = [0, 0, 0, 0, 0, 0]\n";
@@ -321,6 +322,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\tcmd_servo_q = q\n";
 	cmd_str += "\t\tcmd_force_c = c\n";
 	cmd_str += "\t\tcmd_force_f = f\n";
+	cmd_str += "\t\tprv_force_state = cmd_force_state\n";
 	cmd_str += "\t\tif a > 0:\n";
 	cmd_str += "\t\t\tcmd_force_state = FORCE_ACTIVE\n";
 	cmd_str += "\t\telse:\n";
@@ -331,6 +333,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tthread servoThread():\n";
 	cmd_str += "\t\tstate = SERVO_IDLE\n";
 	cmd_str += "\t\tf_state = FORCE_IDLE\n";
+	cmd_str += "\t\tprv_f_state = FORCE_IDLE\n";
 	cmd_str += "\t\twhile True:\n";
 	cmd_str += "\t\t\tenter_critical\n";
 	cmd_str += "\t\t\tq = cmd_servo_q\n";
@@ -348,10 +351,12 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tstopj(1.0)\n";
 	cmd_str += "\t\t\t\tsync()\n";
 	cmd_str += "\t\t\telif state == SERVO_RUNNING:\n";
-	cmd_str += "\t\t\t\tforce_state = cmd_force_state\n";
-	cmd_str += "\t\t\t\tif force_state == FORCE_ACTIVE:\n";
+	cmd_str += "\t\t\t\tf_state = cmd_force_state\n";
+	cmd_str += "\t\t\t\tprv_f_state = prv_force_state\n";
+	cmd_str += "\t\t\t\tf_state = cmd_force_state\n";
+	cmd_str += "\t\t\t\tif f_state == FORCE_ACTIVE:\n";
 	cmd_str += "\t\t\t\t\tforce_mode(tool_pose(), c, f, 2, FORCE_LIMITS)\n";
-	cmd_str += "\t\t\t\telse:\n";
+	cmd_str += "\t\t\t\telif (f_state == FORCE_IDLE) and (prv_f_state == FORCE_ACTIVE):\n";
 	cmd_str += "\t\t\t\t\tend_force_mode()\n";
 	cmd_str += "\t\t\t\tend\n";
 
