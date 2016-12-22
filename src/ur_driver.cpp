@@ -355,7 +355,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tprv_f_state = prv_force_state\n";
 	cmd_str += "\t\t\t\tf_state = cmd_force_state\n";
 	cmd_str += "\t\t\t\tif f_state == FORCE_ACTIVE:\n";
-	cmd_str += "\t\t\t\t\tforce_mode(tool_pose(), c, f, 2, FORCE_LIMITS)\n";
+	cmd_str += "\t\t\t\t\tforce_mode(p[0.0,0.0,0.0,0.0,0.0,0.0], c, f, 2, FORCE_LIMITS)\n";
 	cmd_str += "\t\t\t\telif (f_state == FORCE_IDLE) and (prv_f_state == FORCE_ACTIVE):\n";
 	cmd_str += "\t\t\t\t\tend_force_mode()\n";
 	cmd_str += "\t\t\t\tend\n";
