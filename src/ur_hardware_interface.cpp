@@ -158,11 +158,9 @@ void UrHardwareInterface::read() {
 	}
 
 	for (std::size_t i = 0; i < 6; ++i) {
+		tcp_pos_[i]   = tcp_pos[i];
 		tcp_speed_[i] = tcp_speed[i];
 	}
-
-	ROS_INFO_STREAM("x: " << tcp_pos[0] << "," << tcp_pos[1] << "," << tcp_pos[2] << "," << tcp_pos[3] << "," << tcp_pos[4] << "," << tcp_pos[5]);
-	ROS_INFO_STREAM("v: " << tcp_speed_[0] << "," << tcp_speed_[1] << "," << tcp_speed_[2] << "," << tcp_speed_[3] << "," << tcp_speed_[4] << "," << tcp_speed_[5]);
 }
 
 void UrHardwareInterface::setMaxVelChange(double inp) {
@@ -188,7 +186,10 @@ void UrHardwareInterface::write() {
 	} else if (position_interface_running_) {
 		robot_->servoj(joint_position_command_);
 	} else if (force_mode_interface_running_) {
-		ROS_INFO_STREAM("u: " << wrench_command_[0] << "," << wrench_command_[1] << "," << wrench_command_[2] << "," << wrench_command_[3] << "," << wrench_command_[4] << "," << wrench_command_[5]);
+
+		ROS_INFO_STREAM(tcp_pos_[0] << "," << tcp_pos_[1] << "," << tcp_pos_[2] << "," << tcp_pos_[3] << "," << tcp_pos_[4] << "," << tcp_pos_[5] << "," <<
+		                tcp_speed_[0] << "," << tcp_speed_[1] << "," << tcp_speed_[2] << "," << tcp_speed_[3] << "," << tcp_speed_[4] << "," << tcp_speed_[5] << "," <<
+		                wrench_command_[0] << "," << wrench_command_[1] << "," << wrench_command_[2] << "," << wrench_command_[3] << "," << wrench_command_[4] << "," << wrench_command_[5]);
 		robot_->forcej(joint_position_command_, compliance_command_, wrench_command_);
 	}
 }

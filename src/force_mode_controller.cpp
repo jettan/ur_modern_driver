@@ -232,7 +232,7 @@ void ForceModeController::updateControllers(ros::Time time, std::vector<int> & c
 
 	for (unsigned int i = 0; i < 6; ++i) {
 		double force = distribution_(generator_) * 20;
-		if (force > 1 || force < -1) {
+		if (force > 0.1 || force < -0.1) {
 			compliances[i] = 1;
 			forces[i]      = force;
 		}

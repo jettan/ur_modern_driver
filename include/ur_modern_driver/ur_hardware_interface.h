@@ -139,6 +139,7 @@ protected:
 	double robot_force_[3] = { 0., 0., 0. };
 	double robot_torque_[3] = { 0., 0., 0. };
 	double tcp_speed_[6] = { 0., 0., 0., 0., 0., 0. };
+	double tcp_pos_[6] = { 0., 0., 0., 0., 0., 0. };
 
 	double max_vel_change_;
 
