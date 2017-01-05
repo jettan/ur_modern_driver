@@ -72,7 +72,7 @@ std::string getLeafNamespace(const ros::NodeHandle & nh) {
 
 } // internal namespace
 
-ForceModeController::ForceModeController() : distribution_(-1.0, 1.0), steps_per_trial_(250), controller_step_length_(5) {}
+ForceModeController::ForceModeController() : distribution_(-1.0, 1.0), steps_per_trial_(5), controller_step_length_(125) {}
 
 bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle & root_nh, ros::NodeHandle & controller_nh) {
 	// Cache the controller node handle.
@@ -133,6 +133,7 @@ bool ForceModeController::init(hardware_interface::RobotHW * hw, ros::NodeHandle
 
 	// Subscribe on ~command topic.
 	position_command_subscriber_ = controller_nh_.subscribe("command", 1, &ForceModeController::positionCommandCB, this);
+	action_command_subscriber_ = controller_nh_.subscribe("action", 125, &ForceModeController::actionCommandCB, this);
 
 	return true;
 }
@@ -192,8 +193,6 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 		updateControllers(time, compliance_command_, force_command_);
 	}
 
-	// TODO: Check for error/tolerance and reset flag when desired position is reached.
-
 	// Make the robot do the action.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
 		if (position_command_active_) {
@@ -219,26 +218,13 @@ void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg)
 	}
 }
 
-// TODO: Do things and fill in compliance and force vector.
-void ForceModeController::updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces) {
-	// Reset compliance and forces to zero first.
+// Update forces/compliance on receiving.
+void ForceModeController::actionCommandCB(const ForceModeActionConstPtr & msg) {
+	ROS_INFO_STREAM("Updating force mode action to id: " << msg->id);
 	for (unsigned int i = 0; i < 6; ++i) {
-		forces[i]      = 0;
-		compliances[i] = 0;
+		compliance_command_[i] = msg->compliances[i];
+		force_command_[i]      = msg->forces[i];
 	}
-
-	// Do nothing if the desired number of steps have been taken.
-	if (step_counter_ >= steps_per_trial_) return;
-
-	for (unsigned int i = 0; i < 6; ++i) {
-		double force = distribution_(generator_) * 20;
-		if (force > 0.1 || force < -0.1) {
-			compliances[i] = 1;
-			forces[i]      = force;
-		}
-	}
-
-	step_counter_++;
 }
 
 } // namespace

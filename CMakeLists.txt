@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   trajectory_msgs
   ur_msgs
+  goodhand_msgs
   tf
 )
 
@@ -125,6 +126,7 @@ catkin_package(
   urdf
   sensor_msgs
   trajectory_msgs
+  goodhand_msgs
   ur_msgs
   DEPENDS
   ur_hardware_interface

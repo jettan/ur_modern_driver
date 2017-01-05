@@ -13,6 +13,7 @@
 
 #include <trajectory_msgs/JointTrajectory.h>
 #include <sensor_msgs/JointState.h>
+#include <goodhand_msgs/ForceModeAction.h>
 
 #include <controller_interface/multi_interface_controller.h>
 #include <realtime_tools/realtime_buffer.h>
@@ -44,12 +45,14 @@ private:
 	};
 
 	typedef trajectory_msgs::JointTrajectory::ConstPtr JointTrajectoryConstPtr;
+	typedef goodhand_msgs::ForceModeAction::ConstPtr ForceModeActionConstPtr;
 
 	/// The node handle of this controller.
 	ros::NodeHandle controller_nh_;
 
 	/// Subscriber to receive an individual position command to reset the position of the robot.
 	ros::Subscriber position_command_subscriber_;
+	ros::Subscriber action_command_subscriber_;
 
 	/// The name of this controller.
 	std::string name_;
@@ -96,7 +99,9 @@ private:
 	/// Callback for when the position command subscriber receives a new command.
 	void positionCommandCB(const JointTrajectoryConstPtr & msg);
 
-	// TODO: Add sample as an argument once that is implemented.
+	/// Callback for when the force mode action command subscriber receives a new command.
+	void actionCommandCB(const ForceModeActionConstPtr & msg);
+
 	/// Update function for the controller to fill in data.
 	void updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces);
 
