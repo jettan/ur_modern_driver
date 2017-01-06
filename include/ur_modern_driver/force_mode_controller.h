@@ -102,9 +102,6 @@ private:
 	/// Callback for when the force mode action command subscriber receives a new command.
 	void actionCommandCB(const ForceModeActionConstPtr & msg);
 
-	/// Update function for the controller to fill in data.
-	void updateControllers(ros::Time time, std::vector<int> & compliances, std::vector<double> & forces);
-
 	std::default_random_engine generator_;
 	std::uniform_real_distribution<double> distribution_;
 };

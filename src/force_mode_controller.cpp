@@ -185,14 +185,6 @@ void ForceModeController::update(const ros::Time & time, const ros::Duration & p
 		joint_state.velocity[i] = joints_[i].getVelocity();
 	}
 
-	// Bump the counter.
-	controller_counter_ = (controller_counter_+ 1) % controller_step_length_;
-
-	// Only perform controller step if the counter equals 0 to downsample controller updates.
-	if (!controller_counter_) {
-		updateControllers(time, compliance_command_, force_command_);
-	}
-
 	// Make the robot do the action.
 	for (unsigned int i = 0; i < joints_.size(); ++i) {
 		if (position_command_active_) {
@@ -220,7 +212,7 @@ void ForceModeController::positionCommandCB(const JointTrajectoryConstPtr & msg)
 
 // Update forces/compliance on receiving.
 void ForceModeController::actionCommandCB(const ForceModeActionConstPtr & msg) {
-	ROS_INFO_STREAM("Updating force mode action to id: " << msg->id);
+	ROS_INFO_STREAM("Updating force mode action to: " << *msg);
 	for (unsigned int i = 0; i < 6; ++i) {
 		compliance_command_[i] = msg->compliances[i];
 		force_command_[i]      = msg->forces[i];
