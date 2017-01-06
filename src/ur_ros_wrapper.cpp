@@ -47,6 +47,7 @@
 #include "ur_msgs/IOStates.h"
 #include "ur_msgs/Digital.h"
 #include "ur_msgs/Analog.h"
+#include "goodhand_msgs/Observation.h"
 #include "std_msgs/String.h"
 #include <controller_manager/controller_manager.h>
 #include <realtime_tools/realtime_publisher.h>
@@ -576,6 +577,9 @@ private:
 		realtime_tools::RealtimePublisher<geometry_msgs::TwistStamped> tool_vel_pub( nh_, "tool_velocity", 1 );
 		tool_vel_pub.msg_.header.frame_id = base_frame_;
 
+		// Publisher for the observed state.
+		realtime_tools::RealtimePublisher<goodhand_msgs::Observation> observation_publisher(nh_, "observation", 1);
+
 		clock_gettime(CLOCK_MONOTONIC, &last_time);
 		while (ros::ok()) {
 			std::mutex msg_lock; // The values are locked for reading in the class, so just use a dummy mutex
@@ -628,8 +632,9 @@ private:
 				tf_pub.unlockAndPublish();
 			}
 
-			//Publish tool velocity
+			//Publish observations.
 			std::vector<double> tcp_speed = robot_.rt_interface_->robot_state_->getTcpSpeedActual();
+			std::vector<double> tcp_pos = robot_.rt_interface_->robot_state_->getToolVectorActual();
 
 			if( tool_vel_pub.trylock() )
 			{			
@@ -642,6 +647,24 @@ private:
 				tool_vel_pub.msg_.twist.angular.z = tcp_speed[5];
 
 				tool_vel_pub.unlockAndPublish();
+			}
+
+			if (observation_publisher.trylock()) {
+				observation_publisher.msg_.header.stamp        = ros_time;
+				observation_publisher.msg_.tcp_pose.linear.x   = tcp_pos[0];
+				observation_publisher.msg_.tcp_pose.linear.y   = tcp_pos[1];
+				observation_publisher.msg_.tcp_pose.linear.z   = tcp_pos[2];
+				observation_publisher.msg_.tcp_pose.angular.x  = tcp_pos[3];
+				observation_publisher.msg_.tcp_pose.angular.y  = tcp_pos[4];
+				observation_publisher.msg_.tcp_pose.angular.z  = tcp_pos[5];
+				observation_publisher.msg_.tcp_speed.linear.x  = tcp_speed[0];
+				observation_publisher.msg_.tcp_speed.linear.y  = tcp_speed[1];
+				observation_publisher.msg_.tcp_speed.linear.z  = tcp_speed[2];
+				observation_publisher.msg_.tcp_speed.angular.x = tcp_speed[3];
+				observation_publisher.msg_.tcp_speed.angular.y = tcp_speed[4];
+				observation_publisher.msg_.tcp_speed.angular.z = tcp_speed[5];
+
+				observation_publisher.unlockAndPublish();
 			}
 
 		}
