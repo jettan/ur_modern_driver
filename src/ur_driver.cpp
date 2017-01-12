@@ -354,18 +354,28 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tf_state = cmd_force_state\n";
 	cmd_str += "\t\t\t\tprv_f_state = prv_force_state\n";
 	cmd_str += "\t\t\t\tf_state = cmd_force_state\n";
-	cmd_str += "\t\t\t\tif f_state == FORCE_ACTIVE:\n";
+
+	//if (sec_interface_->robot_state_->getVersion() >= 3.1)
+	//	sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
+	//			servoj_time_, servoj_lookahead_time_, servoj_gain_);
+	//else
+	//	sprintf(buf, "\t\t\t\tservoj(q, t=%.4f)\n", servoj_time_);
+	//cmd_str += buf;
+
+	// Rising edge.
+	cmd_str += "\t\t\t\tif (f_state == FORCE_ACTIVE) and (prv_f_state == FORCE_IDLE):\n";
+	cmd_str += "\t\t\t\t\tmovej(q)\n";
 	cmd_str += "\t\t\t\t\tforce_mode(p[0.0,0.0,0.0,0.0,0.0,0.0], c, f, 2, FORCE_LIMITS)\n";
+	cmd_str += "\t\t\t\t\t\tsleep(0.008)\n";
+
+	// Continuous high signal.
+	cmd_str += "\t\t\t\telif (f_state == FORCE_ACTIVE) and (prv_f_state == FORCE_ACTIVE):\n";
+	cmd_str += "\t\t\t\t\tsleep(0.008)\n";
+
+	// Falling edge.
 	cmd_str += "\t\t\t\telif (f_state == FORCE_IDLE) and (prv_f_state == FORCE_ACTIVE):\n";
 	cmd_str += "\t\t\t\t\tend_force_mode()\n";
 	cmd_str += "\t\t\t\tend\n";
-
-	if (sec_interface_->robot_state_->getVersion() >= 3.1)
-		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
-				servoj_time_, servoj_lookahead_time_, servoj_gain_);
-	else
-		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f)\n", servoj_time_);
-	cmd_str += buf;
 
 	cmd_str += "\t\t\telse:\n";
 	cmd_str += "\t\t\t\tsync()\n";
