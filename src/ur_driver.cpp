@@ -300,15 +300,41 @@ bool UrDriver::uploadForceProg() {
 	std::string cmd_str;
 	char buf[128];
 	cmd_str = "def forceProg():\n";
+	
+	cmd_str += "\tFORCE_LIMITS = [0.1, 0.1, 0.15, 0.017, 0.017, 0.017]\n";
+	cmd_str += "\tmovej([0, -1.13, 1.75, -2.26, -1.57, 0], a=1.39, v=1.047)\n";
+	cmd_str += "\tsync()\n";
+	cmd_str += "\twhile (True):\n";
+	cmd_str += "\t\tL1 = 0\n";
+	cmd_str += "\t\twhile (L1 < 250):\n";
+	cmd_str += "\t\t\tforce_mode(p[0.0,0.0,0.0,0.0,0.0,0.0], [1,0,0,0,0,0], [10,0,0,0,0,0], 2, FORCE_LIMITS)\n";
+	cmd_str += "\t\t\tL1 = L1 + 1\n";
+	cmd_str += "\t\t\tsleep(0.008)\n";
+	cmd_str += "\t\tend\n";
+	cmd_str += "\t\tend_force_mode()\n";
+	cmd_str += "\t\tstopl(5.0)\n";
+	cmd_str += "\t\tL1 = 0\n";
+	cmd_str += "\t\twhile (L1 < 250):\n";
+	cmd_str += "\t\t\tforce_mode(p[0.0,0.0,0.0,0.0,0.0,0.0], [1,0,0,0,0,0], [-10,0,0,0,0,0], 2, FORCE_LIMITS)\n";
+	cmd_str += "\t\t\tL1 = L1 + 1\n";
+	cmd_str += "\t\t\tsleep(0.008)\n";
+	cmd_str += "\t\tend\n";
+	cmd_str += "\t\tend_force_mode()\n";
+	cmd_str += "\t\tstopl(5.0)\n";
+	cmd_str += "\tend\n";
+	cmd_str += "end\n";
 
+	/*
 	sprintf(buf, "\tMULT_jointstate = %i\n", MULT_JOINTSTATE_);
 	cmd_str += buf;
 
+	cmd_str += "\tmovej([0, -1.13, 1.75, -2.26, -1.57, 0], a=1.39, v=1.047)\n";
+	cmd_str += "\tsync()\n";
 	cmd_str += "\tSERVO_IDLE = 0\n";
 	cmd_str += "\tSERVO_RUNNING = 1\n";
 	cmd_str += "\tFORCE_IDLE = 0\n";
 	cmd_str += "\tFORCE_ACTIVE = 1\n";
-	cmd_str += "\tFORCE_LIMITS = [0.1, 0.1, 0.15, 0.349, 0.349, 0.349]\n";
+	cmd_str += "\tFORCE_LIMITS = [0.1, 0.1, 0.15, 0.017, 0.017, 0.017]\n";
 	cmd_str += "\tcmd_servo_state = SERVO_IDLE\n";
 	cmd_str += "\tprv_force_state = FORCE_IDLE\n";
 	cmd_str += "\tcmd_force_state = FORCE_IDLE\n";
@@ -355,30 +381,35 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\t\t\t\tprv_f_state = prv_force_state\n";
 	cmd_str += "\t\t\t\tf_state = cmd_force_state\n";
 
-	//if (sec_interface_->robot_state_->getVersion() >= 3.1)
-	//	sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
-	//			servoj_time_, servoj_lookahead_time_, servoj_gain_);
-	//else
-	//	sprintf(buf, "\t\t\t\tservoj(q, t=%.4f)\n", servoj_time_);
-	//cmd_str += buf;
 
 	// Rising edge.
 	cmd_str += "\t\t\t\tif (f_state == FORCE_ACTIVE) and (prv_f_state == FORCE_IDLE):\n";
-	cmd_str += "\t\t\t\t\tmovej(q)\n";
 	cmd_str += "\t\t\t\t\tforce_mode(p[0.0,0.0,0.0,0.0,0.0,0.0], c, f, 2, FORCE_LIMITS)\n";
-	cmd_str += "\t\t\t\t\t\tsleep(0.008)\n";
+	cmd_str += "\t\t\t\t\tsleep(0.008)\n";
 
 	// Continuous high signal.
 	cmd_str += "\t\t\t\telif (f_state == FORCE_ACTIVE) and (prv_f_state == FORCE_ACTIVE):\n";
+	cmd_str += "\t\t\t\t\tforce_mode(p[0.0,0.0,0.0,0.0,0.0,0.0], c, f, 2, FORCE_LIMITS)\n";
 	cmd_str += "\t\t\t\t\tsleep(0.008)\n";
 
 	// Falling edge.
 	cmd_str += "\t\t\t\telif (f_state == FORCE_IDLE) and (prv_f_state == FORCE_ACTIVE):\n";
 	cmd_str += "\t\t\t\t\tend_force_mode()\n";
+	//cmd_str += "\t\t\t\t\tstopl(5.0)\n";
+
+	// Continuous low signal.
+	cmd_str += "\t\t\t\telif (f_state == FORCE_IDLE) and (prv_f_state == FORCE_IDLE):\n";
+	cmd_str += "\t\t\t\t\tsync()\n";
 	cmd_str += "\t\t\t\tend\n";
 
 	cmd_str += "\t\t\telse:\n";
-	cmd_str += "\t\t\t\tsync()\n";
+
+	if (sec_interface_->robot_state_->getVersion() >= 3.1)
+		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f, lookahead_time=%.4f, gain=%.0f)\n",
+				servoj_time_, servoj_lookahead_time_, servoj_gain_);
+	else
+		sprintf(buf, "\t\t\t\tservoj(q, t=%.4f)\n", servoj_time_);
+	cmd_str += buf;
 	cmd_str += "\t\t\tend\n";
 	cmd_str += "\t\tend\n";
 	cmd_str += "\tend\n";
@@ -420,6 +451,7 @@ bool UrDriver::uploadForceProg() {
 	cmd_str += "\tkill thread_servo\n";
 	cmd_str += "end\n";
 
+	*/
 	rt_interface_->addCommandToQueue(cmd_str);
 	return UrDriver::openServo();
 }
